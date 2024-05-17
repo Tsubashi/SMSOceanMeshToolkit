@@ -688,7 +688,8 @@ class CoastalGeometry(Region):
         logger.info(msg)
 
         # transform if necessary
-        s = self.transform_to(gpd.read_file(self.vector_data), self.crs)
+        #s = self.transform_to(gpd.read_file(self.vector_data), self.crs)
+        s = gpd.read_file(self.vector_data)
 
         # Explode to remove multipolygons or multi-linestrings (if present)
         s = s.explode(index_parts=True)

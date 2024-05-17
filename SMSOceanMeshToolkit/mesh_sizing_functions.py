@@ -291,6 +291,7 @@ def feature_sizing_function(
     nearshore_tolerance=0.002,
     max_edge_length=np.inf,
     gradation=0.05,
+    return_medial_axis=False,
 ):
     """
     Mesh sizes vary proportional to the width or "thickness" of the shoreline
@@ -309,9 +310,9 @@ def feature_sizing_function(
         The maximum edge length of the mesh nearshore in the units of the grid's crs
     nearshore_tolerance: float, optional
         The distance from the shoreline to enforce the maximum edge length
-    gradation: float, optional
-        The decimal percent mesh size gradation rate to-be-enforced.
-
+    return_medial_axis: bool, optional
+        If True, return the medial axis as a vector file 
+        
     Returns
     -------
     grid: class:`Grid`
@@ -353,6 +354,8 @@ def feature_sizing_function(
     # calculate the medial axis points
     skel = medial_axis(phi, return_distance=False)
 
+    # todo: convert skel to a geopackage file that contains the medial axis as linestrings 
+
     indicies_medial_points = skel == 1
     medial_points_x = x[indicies_medial_points]
     medial_points_y = y[indicies_medial_points]
@@ -381,7 +384,7 @@ def feature_sizing_function(
         logger.info(f"Enforcing maximum edge length nearshore {nearshore_tolerance} units for {max_element_size_nearshore}...")
         enforce = dis < nearshore_tolerance
         # find violations and enforce the maximum edge length 
-        grid_calc.values[enforce] = np.maximum(grid_calc.values[enforce], max_element_size_nearshore)
+        grid_calc.values[enforce] = np.minimum(grid_calc.values[enforce], max_element_size_nearshore)
 
     # interpolate the finer grid used for calculations to the final coarser grid
     grid = grid_calc.interpolate_onto(grid)
@@ -395,7 +398,7 @@ def feature_sizing_function(
     grid.build_interpolant()
 
     # enforce mesh gradation
-    grid = enforce_mesh_gradation(grid, gradation=gradation)
+    #grid = enforce_mesh_gradation(grid, gradation=gradation)
 
     return grid
 
