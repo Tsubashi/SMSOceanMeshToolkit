@@ -329,9 +329,9 @@ def _is_path_ccw(_p):
         detO = np.linalg.det(O3)
         i += 1
 
-    if np.isclose(detO, 0.0):
-        raise RuntimeError("Cannot determine orientation from colinear path.")
-
+    #if np.isclose(detO, 0.0):
+    #    raise RuntimeError("Cannot determine orientation from colinear path.")
+    
     return detO > 0.0
 
 
