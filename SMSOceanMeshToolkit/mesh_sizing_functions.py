@@ -31,7 +31,62 @@ __all__ = [
     "enforce_mesh_gradation",
     "wavelength_sizing_function",
     "enforce_CFL_condition",
+    "enforce_mesh_size_bounds_elevation",
 ]
+
+def enforce_mesh_size_bounds_elevation(grid, dem, bounds):
+    """Enforce mesh size bounds (min/max) as a function of elevation
+
+    Parameters
+    ----------
+    grid: :class:`Grid`
+        A grid object with its values field populated
+    dem:  :class:`Dem`
+        Data processed from :class:`Dem`.
+    bounds: list of list
+        A list of potentially > 1 len(4) lists containing
+        [[min_mesh_size, max_mesh_size, min_elevation_bound, max_elevation_bound]]
+        The orientation of the elevation bounds should be the same as that of the DEM
+        (i.e., negative downwards towards the Earth's center).
+
+    Returns
+    -------
+    :class:`Grid` object
+        A sizing function with the bounds mesh size bounds enforced.
+    """
+    x, y = grid.create_grid()
+    tmpz = dem.eval((x, y))
+    for i, bound in enumerate(bounds):
+        assert len(bound) == 4, (
+            "Bounds must be specified  as a list with [min_mesh_size,"
+            " max_mesh_size, min_elevation_bound, max_elevation_bound]"
+        )
+        min_h, max_h, min_z, max_z = bound
+        # sanity checks
+        error_sz = (
+            f"For bound number {i} the maximum size bound {max_h} is smaller"
+            f" than the minimum size bound {min_h}"
+        )
+        error_elev = (
+            f"For bound number {i} the maximum elevation bound {max_z} is"
+            f" smaller than the minimum elevation bound {min_z}"
+        )
+        assert min_h < max_h, error_sz
+        assert min_z < max_z, error_elev
+        # get grid values to enforce the bounds
+        upper_indices = np.where(
+            (tmpz > min_z) & (tmpz <= max_z) & (grid.values >= max_h)
+        )
+        lower_indices = np.where(
+            (tmpz > min_z) & (tmpz <= max_z) & (grid.values < min_h)
+        )
+
+        grid.values[upper_indices] = max_h
+        grid.values[lower_indices] = min_h
+
+    grid.build_interpolant()
+
+    return grid
 
 def combine_sizing_functions(sizing_functions, operation='min'): 
     '''

@@ -16,7 +16,8 @@ from .mesh_sizing_functions import (combine_sizing_functions,
                                     enforce_CFL_condition,
                                     enforce_mesh_gradation,
                                     feature_sizing_function,
-                                    wavelength_sizing_function)
+                                    wavelength_sizing_function, 
+                                    enforce_mesh_size_bounds_elevation)
 from .plotting import SimplexCollection, simpplot
 from .Region import Region
 from .signed_distance_function import signed_distance_function
@@ -37,6 +38,7 @@ __all__ = [
     "distance_sizing_from_point_function",
     "enforce_CFL_condition",
     "enforce_mesh_gradation",
+    "enforce_mesh_size_bounds_elevation",
     "feature_sizing_function",
     "wavelength_sizing_function",
     "generate_mesh",
