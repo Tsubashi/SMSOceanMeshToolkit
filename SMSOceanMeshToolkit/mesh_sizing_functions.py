@@ -5,6 +5,7 @@ Mesh sizing functions
 import logging
 
 # tpl
+from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import scipy.spatial
@@ -345,8 +346,9 @@ def feature_sizing_function(
     max_element_size_nearshore=np.inf, 
     nearshore_tolerance=0.002,
     max_edge_length=np.inf,
-    gradation=0.05,
-    return_medial_axis=False,
+    save_medial_axis=False,
+    medial_axis_file='medial_axis.gpkg',
+    medial_axis_points=None,
 ):
     """
     Mesh sizes vary proportional to the width or "thickness" of the shoreline
@@ -365,9 +367,14 @@ def feature_sizing_function(
         The maximum edge length of the mesh nearshore in the units of the grid's crs
     nearshore_tolerance: float, optional
         The distance from the shoreline to enforce the maximum edge length
-    return_medial_axis: bool, optional
+    save_medial_axis: bool, optional
         If True, return the medial axis as a vector file 
-        
+    medial_axis_file: str, optional
+        The path to a vector file containing the medial axis points
+    medial_axis_points: str, optional
+        If you have a vector file with points, use these instead
+        of calculating the medial axis
+    
     Returns
     -------
     grid: class:`Grid`
@@ -376,6 +383,7 @@ def feature_sizing_function(
     """
 
     logger.info("Building a feature sizing function...")
+       
     assert (
         number_of_elements_per_width > 0
     ), "local feature size  must be greater than 0"
@@ -395,26 +403,45 @@ def feature_sizing_function(
         values=0.0,
         extrapolate=True,
     )
-    x, y = grid_calc.create_grid()
-    qpts = np.column_stack((x.flatten(), y.flatten()))
-    phi = my_signed_distance_function.eval(qpts)
-    # outside
-    phi[phi > 0] = 999
-    # inside and on the boundary
-    phi[phi <= 0] = 1.0
-    # n/a values
-    phi[phi == 999] = 0.0
-    phi = np.reshape(phi, grid_calc.values.shape)
 
-    # calculate the medial axis points
-    skel = medial_axis(phi, return_distance=False)
+    # check the existence ofof the medial axis points
+    if medial_axis_points is not None:
+        assert isinstance(medial_axis_points, str), "A path to a vector file must be provided"
+        assert Path(medial_axis_points).exists(), "The path to the vector file does not exist"
+        logger.info(f"Using the provided medial axis points from {medial_axis_points}")
+        gdf = gpd.read_file(medial_axis_points)
 
-    # todo: convert skel to a geopackage file that contains the medial axis as linestrings 
+        medial_points = np.column_stack((gdf.geometry.x, gdf.geometry.y))
 
-    indicies_medial_points = skel == 1
-    medial_points_x = x[indicies_medial_points]
-    medial_points_y = y[indicies_medial_points]
-    medial_points = np.column_stack((medial_points_x, medial_points_y))
+    else:
+        x, y = grid_calc.create_grid()
+        qpts = np.column_stack((x.flatten(), y.flatten()))
+        phi = my_signed_distance_function.eval(qpts)
+        # outside
+        phi[phi > 0] = 999
+        # inside and on the boundary
+        phi[phi <= 0] = 1.0
+        # n/a values
+        phi[phi == 999] = 0.0
+        phi = np.reshape(phi, grid_calc.values.shape)
+
+        # calculate the medial axis points
+        skel = medial_axis(phi, return_distance=False)
+
+        indicies_medial_points = skel == 1
+        medial_points_x = x[indicies_medial_points]
+        medial_points_y = y[indicies_medial_points]
+        medial_points = np.column_stack((medial_points_x, medial_points_y))
+    
+    if save_medial_axis:
+        logger.info(f"Returning the medial axis as a vector file {medial_axis_file}...")
+        gdf = gpd.GeoDataFrame(
+            geometry=gpd.points_from_xy(medial_points[:, 0], medial_points[:, 1])
+        )
+        # set the crs from the grid 
+        gdf.crs = grid.crs
+        gdf.to_file(medial_axis_file, driver="GPKG")
+
 
     phi2 = np.ones(shape=(grid_calc.nx, grid_calc.ny))
     points = np.vstack((coastal_geometry.inner, coastal_geometry.mainland))
@@ -451,9 +478,6 @@ def feature_sizing_function(
 
     grid.extrapolate = True
     grid.build_interpolant()
-
-    # enforce mesh gradation
-    #grid = enforce_mesh_gradation(grid, gradation=gradation)
 
     return grid
 

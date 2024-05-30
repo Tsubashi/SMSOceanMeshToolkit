@@ -75,7 +75,9 @@ def simp_qual(p, t):
     r = 0.5 * np.sqrt((b + c - a) * (c + a - b) * (a + b - c) / (a + b + c))
     # suppress any divide by 0 warnings 
     warnings.filterwarnings("ignore")
-    R = a * b * c / np.sqrt((a + b + c) * (b + c - a) * (c + a - b) * (a + b - c))
+    # hide runtimewarnings 
+    with np.errstate(divide='ignore', invalid='ignore'):
+        R = a * b * c / np.sqrt((a + b + c) * (b + c - a) * (c + a - b) * (a + b - c))
     return 2 * r / R
 
 
