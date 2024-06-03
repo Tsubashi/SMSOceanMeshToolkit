@@ -404,6 +404,9 @@ def feature_sizing_function(
         extrapolate=True,
     )
 
+    x, y = grid_calc.create_grid()
+    qpts = np.column_stack((x.flatten(), y.flatten()))
+
     # check the existence ofof the medial axis points
     if medial_axis_points is not None:
         logger.info(f"Using the provided medial axis points from {medial_axis_points}")
@@ -417,8 +420,6 @@ def feature_sizing_function(
     else:
         logger.info("Calculating the medial axis...")
         
-        x, y = grid_calc.create_grid()
-        qpts = np.column_stack((x.flatten(), y.flatten()))
         phi = my_signed_distance_function.eval(qpts)
         # outside
         phi[phi > 0] = 999
