@@ -439,7 +439,7 @@ def feature_sizing_function(
     
     # save the medial axis points as a vector file 
     # iff save_medial_axis is True and the medial_axis_points is not None
-    if save_medial_axis and medial_axis_points is not None:
+    if save_medial_axis:
         logger.info(f"Returning the medial axis as a vector file {medial_axis_file}...")
         
         gdf = gpd.GeoDataFrame(
