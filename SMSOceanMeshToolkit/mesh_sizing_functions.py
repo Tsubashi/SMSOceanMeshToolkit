@@ -347,7 +347,7 @@ def feature_sizing_function(
     nearshore_tolerance=0.002,
     max_edge_length=np.inf,
     save_medial_axis=False,
-    medial_axis_file='medial_axis.gpkg',
+    medial_axis_file='medial_axis.shp',
     medial_axis_points=None,
 ):
     """
@@ -406,14 +406,17 @@ def feature_sizing_function(
 
     # check the existence ofof the medial axis points
     if medial_axis_points is not None:
+        logger.info(f"Using the provided medial axis points from {medial_axis_points}")
+        
         assert isinstance(medial_axis_points, str), "A path to a vector file must be provided"
         assert Path(medial_axis_points).exists(), "The path to the vector file does not exist"
         logger.info(f"Using the provided medial axis points from {medial_axis_points}")
         gdf = gpd.read_file(medial_axis_points)
-
         medial_points = np.column_stack((gdf.geometry.x, gdf.geometry.y))
 
     else:
+        logger.info("Calculating the medial axis...")
+        
         x, y = grid_calc.create_grid()
         qpts = np.column_stack((x.flatten(), y.flatten()))
         phi = my_signed_distance_function.eval(qpts)
@@ -433,14 +436,17 @@ def feature_sizing_function(
         medial_points_y = y[indicies_medial_points]
         medial_points = np.column_stack((medial_points_x, medial_points_y))
     
-    if save_medial_axis:
+    # save the medial axis points as a vector file 
+    # iff save_medial_axis is True and the medial_axis_points is not None
+    if save_medial_axis and medial_axis_points is not None:
         logger.info(f"Returning the medial axis as a vector file {medial_axis_file}...")
+        
         gdf = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(medial_points[:, 0], medial_points[:, 1])
         )
         # set the crs from the grid 
         gdf.crs = grid.crs
-        gdf.to_file(medial_axis_file, driver="GPKG")
+        gdf.to_file(medial_axis_file, driver="ESRI Shapefile")
 
 
     phi2 = np.ones(shape=(grid_calc.nx, grid_calc.ny))
