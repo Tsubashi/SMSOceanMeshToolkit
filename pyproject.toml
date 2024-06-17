@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SMSOceanMeshToolkit"
+description = "Tools for oceanmesh to interface with SMS"
+authors=[{name="Keith Roberts", email="kroberts@baird.com"}]
+readme = "README.md"
+requires-python = ">=3.8"
+version = "0.1.0"
+classifiers = [
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: GPLv3",
+        "Operating System :: OS Independent",
+        'XMS DMI Definition :: XML :: SMSOceanMeshToolkit/SMSOceanMeshToolkit/tool/Tools.xml'
+]
+dependencies = [
+        "numpy",
+        "pandas",
+        "geopandas",
+        "shapely",
+        "matplotlib",
+        "pyproj",
+        "fiona",
+        "scipy",
+        "xarray",
+        "rioxarray",
+        "scikit-learn",
+        "scikit-image",
+        "scikit-fmm",
+        "inpoly @ git+https://github.com/dengwirda/inpoly-python.git@v0.1.2",
+        "tqdm",
+]
+
+[project.urls]
+repository = "https://github.com/krober10nd/SMSOceanMeshToolkit"
+
+[project.entry-points."xms.dmi.interfaces"]
+SMSOceanMeshToolkit = "SMSOceanMeshToolkit"
+
+[tool.setuptools.packages.find]
+include = ["SMSOceanMeshToolkit*"]
