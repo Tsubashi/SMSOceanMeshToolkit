@@ -1,14 +1,14 @@
 <?xml version ="1.0"?>
 <tools filetype="xmstools" version="1">
     <!-- OceanMesh tools -->
-    <tool name="OceanMesh UGrid from Coverage"
+    <tool name="2D Mesh from Coverage"
           category="OceanMesh"
           description="Tool to create a 2D triangular mesh"
           class_name="OceanMeshUGridTool"
           module_name="SMSOceanMeshToolkit.tool"
           program_name="XMS"
           uuid="41e31910-83f5-455e-90d5-58435e88eaf9"/>
-    <tool name="OceanMesh UGrid Cleaner"
+    <tool name="Clean 2D Mesh"
           category="OceanMesh"
           description="Tool to topologically clean a triangular mesh"
           class_name="UGridCleaner"

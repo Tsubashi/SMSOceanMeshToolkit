@@ -72,10 +72,10 @@ def simp_qual(p, t):
     a = length(p[t[:, 1]] - p[t[:, 0]])
     b = length(p[t[:, 2]] - p[t[:, 0]])
     c = length(p[t[:, 2]] - p[t[:, 1]])
-    r = 0.5 * np.sqrt((b + c - a) * (c + a - b) * (a + b - c) / (a + b + c))
     # suppress any divide by 0 warnings 
     warnings.filterwarnings("ignore")
-    # hide runtimewarnings 
+    with np.errstate(divide='ignore', invalid='ignore'):
+        r = 0.5 * np.sqrt((b + c - a) * (c + a - b) * (a + b - c) / (a + b + c))
     with np.errstate(divide='ignore', invalid='ignore'):
         R = a * b * c / np.sqrt((a + b + c) * (b + c - a) * (c + a - b) * (a + b - c))
     return 2 * r / R

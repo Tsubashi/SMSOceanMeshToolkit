@@ -408,7 +408,8 @@ def feature_sizing_function(
     qpts = np.column_stack((x.flatten(), y.flatten()))
 
     # check the existence ofof the medial axis points
-    if medial_axis_points is not None:
+    if save_medial_axis and medial_axis_points is not None:
+
         logger.info(f"Using the provided medial axis points from {medial_axis_points}")
         
         assert isinstance(medial_axis_points, str), "A path to a vector file must be provided"
