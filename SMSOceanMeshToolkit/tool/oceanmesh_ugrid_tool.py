@@ -812,7 +812,9 @@ class OceanMeshUGridTool(Tool):
 
             self.logger.info("Building the DEM inputs...")
             dem = smsom.DEM(
-                dem_fname, ll_ur=region.bbox, minimum_resolution=min_mesh_size
+                dem_fname, 
+                #ll_ur=region.bbox,
+                minimum_resolution=min_mesh_size
             )
 
         if arguments[ARG_SIZING_FUNCTION_1].value == "Distance":
