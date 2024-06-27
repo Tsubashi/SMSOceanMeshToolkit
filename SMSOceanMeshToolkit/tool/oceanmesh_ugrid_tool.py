@@ -839,7 +839,7 @@ class OceanMeshUGridTool(Tool):
                     max_edge_length=max_mesh_size,
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
-                    save_medial_axis=True, # save the medial axis medial_axis.gpkg file
+                    save_medial_axis=arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value, # save the medial axis medial_axis.gpkg file
                     medial_axis_file=arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, 
             )
             else:
@@ -873,20 +873,16 @@ class OceanMeshUGridTool(Tool):
                     [szfx_1, szfx_2], operation="min"
                 )
 
-        if arguments[ARG_SIZING_FUNCTION_3].value == "CFL Timestep Bounding":
-
-            self.logger.info("Enforcing CFL timestep in mesh sizing function...")
-            # Bound the first sizing function by the cfl timestep
-            szfx_1 = smsom.enforce_CFL_condition(
-                szfx_1, dem, desired_timestep, courant_number=max_cfl
-            )
-
-        # enforce the max element size by depth if selected
         if enforce_max_by_depth:
-            
             self.logger.info("Enforcing maximum element size by depth...")
             szfx_1 = smsom.enforce_mesh_size_bounds_elevation(
                 szfx_1, dem, [[min_mesh_size, size_bound, min_bound, max_bound]]
+            )
+
+        if arguments[ARG_SIZING_FUNCTION_3].value == "CFL Timestep Bounding":
+            self.logger.info("Enforcing CFL timestep in mesh sizing function...")
+            szfx_1 = smsom.enforce_CFL_condition(
+                szfx_1, dem, desired_timestep, courant_number=max_cfl
             )
 
         self.logger.info("Enforcing mesh size gradation...")
@@ -897,6 +893,7 @@ class OceanMeshUGridTool(Tool):
             arguments[ARG_FINAL_SIZING_FUNCTION_RASTER].value
         )
 
+        # convert the xarray to a raster
         ds = szfx_1.to_xarray()
 
         if not arguments[ARG_FINAL_SIZING_FUNCTION_RASTER].value.endswith(".tif"):
