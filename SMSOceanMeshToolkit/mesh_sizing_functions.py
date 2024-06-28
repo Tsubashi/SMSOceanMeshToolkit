@@ -56,7 +56,7 @@ def enforce_mesh_size_bounds_elevation(grid, dem, bounds):
         A sizing function with the bounds mesh size bounds enforced.
     """
     x, y = grid.create_grid()
-    tmpz = dem.eval((x, y))
+    tmpz = dem.eval((y, x))
     for i, bound in enumerate(bounds):
         assert len(bound) == 4, (
             "Bounds must be specified  as a list with [min_mesh_size,"
@@ -154,13 +154,11 @@ def enforce_CFL_condition(
 
     # Estimate wavespeed in ocean (second term represents orbital
     # velocity at 0 degree phase for 1-m amp. wave).
-    x, y = grid.create_vectors()
-    # Interpolate the DEM onto the grid points
-    tmpz = dem.da.interp(x=x, y=y)
+    x, y = grid.create_grid()
+    tmpz = dem.eval((y, x))
 
     crs = grid.crs
     # Limit the minimum depth to 1 m (ignore overland)
-    tmpz = tmpz.values.T
     bound = np.abs(tmpz < 1)
     tmpz[bound] = -1
     u = np.sqrt(gravity * np.abs(tmpz)) + np.sqrt(gravity / np.abs(tmpz))
@@ -258,9 +256,9 @@ def wavelength_sizing_function(
     logger.info("Building a wavelength sizing function...")
     assert isinstance(grid, Grid), "A grid object must be provided"
     grid = grid.copy()
-    x, y = grid.create_vectors()
-    # Interpolate the DEM onto the grid points
-    tmpz = dem.da.interp(x=x, y=y)
+
+    x, y = grid.create_grid()
+    tmpz = dem.eval((y, x))
 
     crs = grid.crs
 
@@ -272,7 +270,6 @@ def wavelength_sizing_function(
             + 1.175 * np.cos(4 * mean_latitude)
             - 0.0023 * np.cos(6 * mean_latitude)
         )
-    tmpz = tmpz.values.T
     tmpz[np.abs(tmpz) < 1]  # avoid division by zero
     # Calculate the wavelength of a wave with period `period` and
     # acceleration due to gravity `gravity`
