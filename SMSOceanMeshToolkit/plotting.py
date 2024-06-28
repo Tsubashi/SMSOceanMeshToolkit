@@ -33,8 +33,8 @@ __all__ = ['SimplexCollection', 'simpplot']
 class SimplexCollection(PathCollection):
     """A collection of triangles."""
     def __init__(self, simplices=None, **kwargs):
-        # Make a 11 color discrete colormap spanning 0 to 1 with red to green
-        cmap = plt.cm.get_cmap('RdYlGn', 8)
+
+        cmap = plt.get_cmap('RdYlGn', 8)
         
         kwargs.setdefault('linewidths', 0.5)
         kwargs.setdefault('edgecolors', 'k')
