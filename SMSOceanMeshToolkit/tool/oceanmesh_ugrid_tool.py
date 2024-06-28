@@ -6,7 +6,9 @@ import sys, logging
 import numpy as np
 import geopandas as gpd
 import matplotlib
+from pathlib import Path
 from pyproj import CRS
+from osgeo import ogr
 
 
 # 3. Aquaveo modules
@@ -18,8 +20,10 @@ from xms.gdal.utilities import gdal_utils as gu
 from xms.tool_core import IoDirection, Tool
 from xms.grid.ugrid import UGrid as XmUGrid
 from xms.constraint.ugrid_builder import UGridBuilder
+from xms.gdal.vectors import VectorInput
+from xms.tool.utilities.coverage_conversion import polygons_to_shapefile, convert_points_to_coverage
+from xms.tool.utilities.file_utils import get_vector_filename
 
-from xms.tool.utilities.coverage_conversion import polygons_to_shapefile
 
 # 4. Local modules
 import SMSOceanMeshToolkit as smsom
@@ -86,12 +90,33 @@ ARG_MESHING_FORCE_FUNCTION = 37
 ARG_OUTPUT_UGRID = 38
 
 
+class DummyVariable:
+    def __init__(self):
+        self.value = None
+
+
 class OceanMeshUGridTool(Tool):
     """Tool to create a raster of a feature mesh sizing fucntion."""
 
     def __init__(self):
         """Initializes the class."""
         super().__init__(name="Ocean Mesh UGrid from coverage")
+        
+    def _push_to_gui(self, file, argument, vector_wkt):
+        """Display the vector file composed of points to the map."""
+        # extract the vector file name from the path 
+        path = Path(file)
+        vector_fname = path.name
+        vi = VectorInput(file)
+        layer_type = vi.layer_type
+        display_wkt = gu.add_vertical_to_wkt(self.default_wkt, self.vertical_datum, self.vertical_units)
+        # create a dummy variable to hold the values which will be displayed on the map
+        dummy_variable = DummyVariable()
+        dummy_variable.value = argument
+        if layer_type in {ogr.wkbPoint, ogr.wkbPointM, ogr.wkbPointZM, ogr.wkbPoint25D}:
+            cov_geometry = vi.get_point_features()
+            new_cov = convert_points_to_coverage(cov_geometry, vector_fname, vector_wkt, display_wkt)
+            self.set_output_coverage(new_cov, dummy_variable)
 
     def enable_arguments(self, arguments):
         """Called to show/hide arguments, change argument values and add new arguments.
@@ -327,8 +352,8 @@ class OceanMeshUGridTool(Tool):
             ),
             # boolean 
             self.bool_argument(
-                name="Save off medial axis",
-                description="Save off the medial axis",
+                name="Save and Display medial axis",
+                description="Save and Display the medial axis",
                 value=False,
                 optional=True,
             ),
@@ -342,8 +367,8 @@ class OceanMeshUGridTool(Tool):
             ),
             # boolean 
             self.bool_argument(
-                name="Load in medial axis",
-                description="Load in a medial axis",
+                name="Load and Display medial axis",
+                description="Load and Display a medial axis",
                 value=False,
                 optional=True,
             ),
@@ -844,7 +869,11 @@ class OceanMeshUGridTool(Tool):
                     nearshore_tolerance=nearshore_tolerance,
                     save_medial_axis=arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value, # save the medial axis medial_axis.gpkg file
                     medial_axis_file=arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, 
-            )
+                )
+                if arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
+                    # Display the medial axis on the map since it was saved
+                    self._push_to_gui(arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, "approximate_medial_axis", wkt)
+
             else:
                 self.logger.info("Loading in medial axis...")
                 # load in the medial axis file from a location specified by the user
@@ -857,6 +886,10 @@ class OceanMeshUGridTool(Tool):
                     nearshore_tolerance=nearshore_tolerance,
                     medial_axis_points=arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value, 
                 )
+                # file is being loaded so it must exist, lets display it
+                self._push_to_gui(arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value, "approximate_medial_axis", wkt)
+
+                
 
         if arguments[ARG_SIZING_FUNCTION_2].value != "None":
             if arguments[ARG_SIZING_FUNCTION_2].value == "Wavelength-to-gridscale":
