@@ -16,7 +16,7 @@ class DEM:
     Digitial elevation model read in from a tif or NetCDF file
     """
 
-    def __init__(self, dem_filename, ll_ur=None, minimum_resolution=None):
+    def __init__(self, dem_filename, ll_ur=None, minimum_resolution=None, target_crs=None):
         """
         Read in a digitial elevation model for later use
         in developing mesh sizing functions.
@@ -31,6 +31,9 @@ class DEM:
         minimum_resolution : float, optional
             Desired minimum resolution DEM shall be used for mesh generation
             (default is None, which implies no downsampling).
+        target_crs : str, optional
+            Target coordinate reference system (default is None, which implies
+            no reprojection).
         """
 
         if isinstance(dem_filename, str):
@@ -39,10 +42,12 @@ class DEM:
         if not dem_filename.exists():
             raise FileNotFoundError(f"File {dem_filename} does not exist")
         self.da = rxr.open_rasterio(dem_filename, masked=True).squeeze().drop("band")
-        # check for the crs
-        if "crs" not in self.da.attrs:
-            # assign geographic crs
-            self.da.rio.write_crs("EPSG:4326", inplace=True)
+        # check if self.da.rio.crs is None
+        if self.da.rio.crs is None:
+            raise ValueError("Coordinate Reference System (CRS) not found in DEM")
+        
+        if target_crs is not None:
+            self = self.reproject(target_crs)
 
         # TODO: catch other cases
         # if lon is dimension rename to longitude
@@ -74,10 +79,21 @@ class DEM:
         r_target = r_specified / desired_ratio
         # Calculate the downsample factor
         downsample_factor = int(r_target / r_current)
+        # max out to a factor of 10 
+        downsample_factor = min(downsample_factor, 10)
         logger.info(f"Downsampling DEM by a factor of {downsample_factor}")
         self.da = self.da.coarsen(
             x=downsample_factor, y=downsample_factor, boundary="trim"
         ).mean()
+        return self
+    
+    # Write a method to rerpoject the DEM
+    def reproject(self, target_crs):
+        """
+        Reproject the DEM to a new coordinate reference system
+        """
+        logger.info(f"Reprojecting DEM to {target_crs}")
+        self.da = self.da.rio.reproject(target_crs)
         return self
 
     def eval(self, query_points):

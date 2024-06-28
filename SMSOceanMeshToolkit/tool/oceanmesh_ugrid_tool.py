@@ -813,8 +813,9 @@ class OceanMeshUGridTool(Tool):
             self.logger.info("Building the DEM inputs...")
             dem = smsom.DEM(
                 dem_fname, 
-                #ll_ur=region.bbox,
-                minimum_resolution=min_mesh_size
+                ll_ur=region.bbox,
+                minimum_resolution=min_mesh_size, 
+                target_crs=epsg_code,
             )
 
         if arguments[ARG_SIZING_FUNCTION_1].value == "Distance":
@@ -917,6 +918,7 @@ class OceanMeshUGridTool(Tool):
             max_iter=int(number_of_meshing_iterations),
             pseudo_dt=psuedo_timestep,
             force_function=force_function,
+            logger=self.logger,
         )
 
         if clean_mesh:

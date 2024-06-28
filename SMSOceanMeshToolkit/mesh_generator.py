@@ -37,6 +37,7 @@ def _parse_kwargs(kwargs):
             "plot",
             "pseudo_dt",
             "force_function",
+            "logger",
         }:
             pass
         else:
@@ -145,9 +146,12 @@ def generate_mesh(domain, edge_length, **kwargs):
         "pseudo_dt": 0.2,
         "force_function": "persson_strang", # or "bossen_heckbert"
         "nscreen": 1,
+        "logger": None,
     }
     opts.update(kwargs)
     _parse_kwargs(kwargs)
+    
+    logger = opts["logger"] or logging.getLogger(__name__)
 
     # if psuedo_dt was not specified and using bossen_heckbert, set it to 0.10 
     if opts["force_function"] == "bossen_heckbert" and "pseudo_dt" not in kwargs:
