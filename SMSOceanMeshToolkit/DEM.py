@@ -81,6 +81,7 @@ class DEM:
         downsample_factor = int(r_target / r_current)
         # max out to a factor of 10 
         downsample_factor = min(downsample_factor, 10)
+        downsample_factor = max(downsample_factor, 1)   
         logger.info(f"Downsampling DEM by a factor of {downsample_factor}")
         self.da = self.da.coarsen(
             x=downsample_factor, y=downsample_factor, boundary="trim"
