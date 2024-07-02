@@ -312,7 +312,7 @@ def generate_mesh(domain, edge_length, **kwargs):
         maxdp = delta_t * np.sqrt((Ftot**2).sum(1)).max()
 
         logger.info(
-            f"Iteration #{count + 1}, max movement is {maxdp:.3f}, there are {len(p):,} vertices and {len(t):,}"
+            f"Iteration #{count + 1}, max movement is {maxdp:.3f}, there are {len(p):,} vertices and {len(t):,} elements"
         )
 
         end = time.time()

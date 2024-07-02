@@ -115,7 +115,8 @@ def combine_sizing_functions(sizing_functions, operation='min'):
     return combined_szfx
 
 def enforce_CFL_condition(
-    grid, dem, timestep, courant_number=0.5, gravity=9.81, return_violations=False
+    grid, dem, timestep, courant_number=0.5, gravity=9.81, return_violations=False, 
+    logger=None,
 ):
     """
     Enforce the Courant-Friedrichs-Lewy condition on a :class:`grid`
@@ -136,7 +137,9 @@ def enforce_CFL_condition(
         The acceleration due to gravity in m/s^2
     return_violations: bool, optional
         If True, return the grid and the locations of the grid cells where the CFL condition was enforced
-
+    logger: logging.Logger, optional
+        A logger object to log messages
+        
     Returns
     -------
     grid: class:`Grid`
@@ -145,6 +148,8 @@ def enforce_CFL_condition(
         The locations of the grid cells where the CFL condition was violated
 
     """
+    logger = logger or logging.getLogger(__name__)
+
     logger.log(
         logging.INFO,
         f"Enforcing the CFL condition for Courant number {courant_number}...",
@@ -161,7 +166,15 @@ def enforce_CFL_condition(
     # Limit the minimum depth to 1 m (ignore overland)
     bound = np.abs(tmpz < 1)
     tmpz[bound] = -1
-    u = np.sqrt(gravity * np.abs(tmpz)) + np.sqrt(gravity / np.abs(tmpz))
+    # if units are in meters 
+    if grid.units == 'metre' or grid.units == 'meter' or grid.units == 'm':
+        u = np.sqrt(gravity * np.abs(tmpz)) + np.sqrt(gravity / np.abs(tmpz))
+    elif grid.units == 'feet':
+        # convert gravity to ft/s^2 
+        # NB: assumes tmpz is in feet
+        gravity_feet = 32.174
+        u = np.sqrt(gravity_feet * np.abs(tmpz)) + np.sqrt(gravity_feet / np.abs(tmpz))
+        
     # if crs is not in meters, convert to meters
     if crs == "EPSG:4326" or crs == 4326:
         mean_latitude = np.mean(grid.bbox[2:])
@@ -171,16 +184,13 @@ def enforce_CFL_condition(
             + 1.175 * np.cos(4 * mean_latitude)
             - 0.0023 * np.cos(6 * mean_latitude)
         )
-        # compute degrees to meters factor
-    else:
-        raise NotImplementedError("Support for other crs not yet implemented")
-        # TODO: add support for feet
 
     # resolve max. Cr violations
     hh_m = grid.values.copy()
     #  convert to meters if crs is in degrees
-    # TODO: add support for feet and other crs
-    hh_m *= meters_per_degree
+    if crs == "EPSG:4326" or crs == 4326:
+        hh_m *= meters_per_degree
+
     Cr0 = (
         timestep * u
     ) / hh_m  # Courant number for given timestep and mesh size variations
@@ -203,11 +213,7 @@ def enforce_CFL_condition(
     hh_m[Cr0 > courant_number] = dxn_max[violations]
 
     if crs == "EPSG:4326" or crs == 4326:
-        # convert back to degrees from meters
         hh_m *= 1 / meters_per_degree
-    else:
-        # TODO: add support for feet
-        raise NotImplementedError("Support for other crs not yet implemented")
 
     grid.values = hh_m
     grid.build_interpolant()
@@ -225,6 +231,7 @@ def wavelength_sizing_function(
     max_edge_length=np.inf,
     period=12.42 * 3600,  # M2 period in seconds
     gravity=9.81,  # m/s^2
+    logger=None,
 ):
     """
     Mesh sizes that vary proportional to an estimate of the wavelength
@@ -246,13 +253,17 @@ def wavelength_sizing_function(
         in seconds
     gravity: float, optional
         The acceleration due to gravity in m/s^2
-
+    logger: logging.Logger, optional
+        A logger object to log messages
+        
     Returns
     -------
     :class:`Grid` objectd
         A sizing function that takes a point and returns a value
 
     """
+    logger = logger or logging.getLogger(__name__)
+    
     logger.info("Building a wavelength sizing function...")
     assert isinstance(grid, Grid), "A grid object must be provided"
     grid = grid.copy()
@@ -261,7 +272,7 @@ def wavelength_sizing_function(
     tmpz = dem.eval((y, x))
 
     crs = grid.crs
-
+    # if geographic convert to meters
     if crs == "EPSG:4326" or crs == 4326:
         mean_latitude = np.mean(grid.bbox[2:])
         meters_per_degree = (
@@ -273,7 +284,14 @@ def wavelength_sizing_function(
     tmpz[np.abs(tmpz) < 1]  # avoid division by zero
     # Calculate the wavelength of a wave with period `period` and
     # acceleration due to gravity `gravity`
-    grid.values = period * np.sqrt(gravity * np.abs(tmpz)) / wl
+    # if the units are in meters 
+    if grid.units == 'metre' or grid.units == 'meter' or grid.units == 'm':
+        grid.values = period * np.sqrt(gravity * np.abs(tmpz)) / wl
+    elif grid.units == 'feet': 
+        # convert gravity to ft/s^2 
+        # NB: assumes tmpz is in feet
+        gravity_feet = 32.174
+        grid.values = period * np.sqrt(gravity_feet * np.abs(tmpz)) / wl
 
     # Convert back to degrees from meters (if geographic)
     if crs == "EPSG:4326" or crs == 4326:
@@ -289,7 +307,7 @@ def wavelength_sizing_function(
     return grid
 
 
-def enforce_mesh_gradation(grid, gradation=0.05):
+def enforce_mesh_gradation(grid, gradation=0.05, logger=None):
     """
     Enforce a mesh size gradation bound `gradation` on a :class:`grid`
 
@@ -299,6 +317,8 @@ def enforce_mesh_gradation(grid, gradation=0.05):
         A grid object with its values field populated
     gradation: float
         The decimal percent mesh size gradation rate to-be-enforced.
+    logger: logging.Logger, optional
+        A logger object to log messages
 
     Returns
     -------
@@ -306,6 +326,8 @@ def enforce_mesh_gradation(grid, gradation=0.05):
         A grid ojbect with its values field gradient limited
 
     """
+    logger = logger or logging.getLogger(__name__)
+    
     if gradation <= 0:
         raise ValueError("Parameter `gradation` must be > 0.0")
     if gradation >= 0.30:
@@ -346,6 +368,7 @@ def feature_sizing_function(
     save_medial_axis=False,
     medial_axis_file='medial_axis.shp',
     medial_axis_points=None,
+    logger=None,    
 ):
     """
     Mesh sizes vary proportional to the width or "thickness" of the shoreline
@@ -371,6 +394,8 @@ def feature_sizing_function(
     medial_axis_points: str, optional
         If you have a vector file with points, use these instead
         of calculating the medial axis
+    logger: logging.Logger, optional    
+        A logger object to log messages
     
     Returns
     -------
@@ -378,6 +403,7 @@ def feature_sizing_function(
         A grid ojbect with its values field populated with feature sizing
 
     """
+    logger = logger or logging.getLogger(__name__)
 
     logger.info("Building a feature sizing function...")
        
@@ -650,6 +676,7 @@ def distance_sizing_function(
     coastal_geometry,
     rate=0.15,
     max_edge_length=np.inf,
+    logger=None,
 ):
     """
     Mesh sizes that vary linearly at `rate` from coordinates in `obj`:CoastalGeometry
@@ -664,12 +691,17 @@ def distance_sizing_function(
         The rate of expansion in decimal percent from the shoreline.
     max_edge_length: float, optional
         The maximum allowable edge length
+    logger: logging.Logger, optional
+        A logger object to log messages
+        
 
     Returns
     -------
     :class:`Grid` object
         A sizing function that takes a point and returns a value
     """
+    logger = logger or logging.getLogger(__name__)
+    
     logger.info("Building a distance mesh sizing function...")
     grid = grid.copy()
     # create phi (-1 where coastal vector intersects grid points 1 elsewhere)

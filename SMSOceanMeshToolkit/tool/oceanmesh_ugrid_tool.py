@@ -851,6 +851,7 @@ class OceanMeshUGridTool(Tool):
                 coastal_geometry,
                 rate=rate_of_change,
                 max_edge_length=max_mesh_size,
+                logger=self.logger,
             )
         elif arguments[ARG_SIZING_FUNCTION_1].value == "Feature-size":
 
@@ -869,6 +870,7 @@ class OceanMeshUGridTool(Tool):
                     nearshore_tolerance=nearshore_tolerance,
                     save_medial_axis=arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value, # save the medial axis medial_axis.gpkg file
                     medial_axis_file=arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, 
+                    logger=self.logger,
                 )
                 if arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
                     # Display the medial axis on the map since it was saved
@@ -885,6 +887,7 @@ class OceanMeshUGridTool(Tool):
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
                     medial_axis_points=arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value, 
+                    logger=self.logger,
                 )
                 # file is being loaded so it must exist, lets display it
                 self._push_to_gui(arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value, "approximate_medial_axis", wkt)
@@ -904,6 +907,7 @@ class OceanMeshUGridTool(Tool):
                     wl=number_of_elements_per_wavelength,
                     max_edge_length=max_mesh_size,
                     period=period_of_wave,
+                    logger=self.logger,
                 )
                 szfx_1 = smsom.combine_sizing_functions(
                     [szfx_1, szfx_2], operation="min"
@@ -918,7 +922,7 @@ class OceanMeshUGridTool(Tool):
         if arguments[ARG_SIZING_FUNCTION_3].value == "CFL Timestep Bounding":
             self.logger.info("Enforcing CFL timestep in mesh sizing function...")
             szfx_1 = smsom.enforce_CFL_condition(
-                szfx_1, dem, desired_timestep, courant_number=max_cfl
+                szfx_1, dem, desired_timestep, courant_number=max_cfl, logger=self.logger
             )
 
         self.logger.info("Enforcing mesh size gradation...")
