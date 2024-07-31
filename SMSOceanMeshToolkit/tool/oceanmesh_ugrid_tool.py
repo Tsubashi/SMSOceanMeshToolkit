@@ -683,8 +683,8 @@ class OceanMeshUGridTool(Tool):
         Args:
             arguments (list): The tool arguments.
         """
-        import time
-        time.sleep(10)
+        #import time
+        #time.sleep(20)
 
         self._validate_arguments(arguments)
 
@@ -768,6 +768,8 @@ class OceanMeshUGridTool(Tool):
             )
             return
 
+        wkt = sr.ExportToWkt()
+        
         if sr.IsGeographic():
             min_mesh_size /= 111000.0  # Approximate meters per degree
             max_mesh_size /= 111000.0  # Approximate meters per degree
@@ -776,10 +778,9 @@ class OceanMeshUGridTool(Tool):
 
             if enforce_max_by_depth:
                 size_bound /= 111000.0
-
+            
             epsg_code = "EPSG:4326"
         else:
-            wkt = sr.ExportToWkt()
             # Create a CRS object from the WKT string
             crs = CRS.from_wkt(wkt)
             # Get the EPSG code
@@ -841,6 +842,7 @@ class OceanMeshUGridTool(Tool):
                 ll_ur=region.bbox,
                 minimum_resolution=min_mesh_size, 
                 target_crs=epsg_code,
+                logger=self.logger,
             )
 
         if arguments[ARG_SIZING_FUNCTION_1].value == "Distance":
@@ -916,7 +918,7 @@ class OceanMeshUGridTool(Tool):
         if enforce_max_by_depth:
             self.logger.info("Enforcing maximum element size by depth...")
             szfx_1 = smsom.enforce_mesh_size_bounds_elevation(
-                szfx_1, dem, [[min_mesh_size, size_bound, min_bound, max_bound]]
+                szfx_1, dem, [[min_mesh_size, size_bound, min_bound, max_bound]], logger=self.logger
             )
 
         if arguments[ARG_SIZING_FUNCTION_3].value == "CFL Timestep Bounding":
