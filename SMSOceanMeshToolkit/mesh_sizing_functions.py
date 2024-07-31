@@ -35,7 +35,7 @@ __all__ = [
     "enforce_mesh_size_bounds_elevation",
 ]
 
-def enforce_mesh_size_bounds_elevation(grid, dem, bounds):
+def enforce_mesh_size_bounds_elevation(grid, dem, bounds, logger=None):
     """Enforce mesh size bounds (min/max) as a function of elevation
 
     Parameters
@@ -49,15 +49,20 @@ def enforce_mesh_size_bounds_elevation(grid, dem, bounds):
         [[min_mesh_size, max_mesh_size, min_elevation_bound, max_elevation_bound]]
         The orientation of the elevation bounds should be the same as that of the DEM
         (i.e., negative downwards towards the Earth's center).
+    logger: logging.Logger, optional
+        A logger object to log messages
 
     Returns
     -------
     :class:`Grid` object
         A sizing function with the bounds mesh size bounds enforced.
     """
+    logger = logger or logging.getLogger(__name__)
+    logger.info("Enforcing mesh size bounds as a function of elevation...")
     x, y = grid.create_grid()
     tmpz = dem.eval((y, x))
     for i, bound in enumerate(bounds):
+        logger.info(f"Enforcing bound: {bound}")
         assert len(bound) == 4, (
             "Bounds must be specified  as a list with [min_mesh_size,"
             " max_mesh_size, min_elevation_bound, max_elevation_bound]"
@@ -163,7 +168,7 @@ def enforce_CFL_condition(
     tmpz = dem.eval((y, x))
 
     crs = grid.crs
-    # Limit the minimum depth to 1 m (ignore overland)
+    # Limit the minimum depth to 1 m/ft (ignore overland)
     bound = np.abs(tmpz < 1)
     tmpz[bound] = -1
     # if units are in meters 
@@ -174,6 +179,9 @@ def enforce_CFL_condition(
         # NB: assumes tmpz is in feet
         gravity_feet = 32.174
         u = np.sqrt(gravity_feet * np.abs(tmpz)) + np.sqrt(gravity_feet / np.abs(tmpz))
+    else:
+        # assume geographic coordinates so DEM is in meters 
+        u = np.sqrt(gravity * np.abs(tmpz)) + np.sqrt(gravity / np.abs(tmpz))
         
     # if crs is not in meters, convert to meters
     if crs == "EPSG:4326" or crs == 4326:
@@ -270,6 +278,7 @@ def wavelength_sizing_function(
 
     x, y = grid.create_grid()
     tmpz = dem.eval((y, x))
+
 
     crs = grid.crs
     # if geographic convert to meters

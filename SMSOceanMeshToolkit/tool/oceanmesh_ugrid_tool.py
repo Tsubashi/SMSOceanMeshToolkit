@@ -237,18 +237,18 @@ class OceanMeshUGridTool(Tool):
         arguments = [
             self.string_argument(
                 name="Input Coverage Type",
-                description="Specify inputs from map coverage or vector file",
+                description="Specify vector inputs from either a map coverage or a vector file",
                 value="Map coverage",
                 choices=["Map coverage", "Vector file"],
             ),
             self.coverage_argument(
-                name="Input polgyons from coverage",
-                description="Map coverage with polygons",
+                name="Input land polgyons from coverage",
+                description="Input land polygons as a map coverage",
                 optional=True,
             ),
             self.file_argument(
-                name="Input polygons as vector file",
-                description="Input coverage as a vector file",
+                name="Input land polygons as vector file",
+                description="Input land polygons as a vector file",
                 io_direction=IoDirection.INPUT,
                 optional=True,
                 value="",
@@ -278,8 +278,8 @@ class OceanMeshUGridTool(Tool):
             ),
             # invert domain
             self.bool_argument(
-                name="Invert domain",
-                description="Invert the area to-be-meshed (area meshed becomes land if was ocean and vice versa)",
+                name="Invert domain coverage",
+                description="Invert the area to-be-meshed (area meshed becomes land if was water and vice versa)",
                 value=False,
                 optional=True,
             ),
@@ -299,21 +299,21 @@ class OceanMeshUGridTool(Tool):
             # max edge length
             self.float_argument(
                 name="Maximum mesh size",
-                description="Maximum edge length (ft/m)",
+                description="Maximum mesh size (ft/m)",
                 value=99999.0,
                 optional=True,
             ),
             # max element size by depth toggl e
             self.bool_argument(
-                name="Maximum element size by depth",
-                description="Bound maximum element size by depth range",
+                name="Maximum mesh size by depth",
+                description="Bound maximum mesh size by depth range",
                 value=False,
                 optional=True,
             ),
             # max element size by depth bounds
             self.string_argument(
-                name="Maximum element size by depth bounds",
-                description="Maximum element size by depth bounds (SIZE_BOUND,ELEV_MIN,ELEV_MAX)",
+                name="Maximum mesh size by depth bounds",
+                description="Maximum mesh size by depth bounds (SIZE_BOUND,ELEV_MIN,ELEV_MAX)",
                 value="",
                 optional=True,
             ),
@@ -333,56 +333,54 @@ class OceanMeshUGridTool(Tool):
             ),
             # number of elements per shorline width
             self.float_argument(
-                name="Number of elements per vector width",
-                description="Number of elements per vector width",
+                name="Number of elements per estimated shoreline width",
+                description="Number of elements per estimated shoreline width",
                 value=3,
                 optional=True,
             ),
             self.float_argument(
-                name="Maximum element size nearshore (ft/m)",
-                description="Maximum element size nearshore (ft/m)",
+                name="Maximum mesh size nearshore (ft/m)",
+                description="Maximum mesh size nearshore (ft/m)",
                 value=99999.0,
                 optional=True,
             ),
             self.float_argument(
                 name="Nearshore tolerance (ft/m)",
-                description="Distance from shoreline (ft/m) used to apply the maximum element size nearshore",
+                description="Distance from shoreline (ft/m) used to enforce the maximum mesh size nearshore",
                 value=1000.0,
                 optional=True,
             ),
             # boolean 
             self.bool_argument(
-                name="Save and Display medial axis",
-                description="Save and Display the medial axis",
+                name="Save and Display approximate medial axis",
+                description="Save and Display the approximate medial axis",
                 value=False,
                 optional=True,
             ),
             # save filename
             self.file_argument(
-                name="Filename to save medial axis",
-                description="Filename to save medial axis",
+                name="Filename to save approximate medial axis",
+                description="Filename to save approximate medial axis",
                 io_direction=IoDirection.OUTPUT,
                 optional=True,
-                value="medial_axis.shp",
             ),
             # boolean 
             self.bool_argument(
-                name="Load and Display medial axis",
-                description="Load and Display a medial axis",
+                name="Load and Display approximate medial axis",
+                description="Load and Display approximate medial axis",
                 value=False,
                 optional=True,
             ),
             # load filename
             self.file_argument(
-                name="Filename to load medial axis",
-                description="Filename to load medial axis",
+                name="Filename to load approximate medial axis",
+                description="Filename to load approximate medial axis",
                 io_direction=IoDirection.INPUT,
                 optional=True,
-                value="medial_axis.shp",
             ),
             self.string_argument(
                 name="Mesh Sizing Function #2 (optional)",
-                description="Mesh sizing function #2 (optional). If selected, specify a DEM",
+                description="Mesh sizing function #2 (optional). If selected, specify a DEM above",
                 value="None",
                 optional=True,
                 choices=["None", "Wavelength-to-gridscale"],
@@ -391,7 +389,7 @@ class OceanMeshUGridTool(Tool):
             self.float_argument(
                 name="Number of elements per wavelength",
                 description="Number of elements per wavelength",
-                value=100,
+                value=300,
                 optional=True,
             ),
             # period of wave 12.42 hours by default
@@ -403,7 +401,7 @@ class OceanMeshUGridTool(Tool):
             ),
             self.string_argument(
                 name="Mesh Sizing Function #3 (optional)",
-                description="Mesh sizing function #3 (optional). If selected, specify a DEM",
+                description="Mesh sizing function #3 (optional). If selected, specify a DEM above",
                 value="None",
                 optional=True,
                 choices=["None", "CFL Timestep Bounding"],
@@ -422,8 +420,8 @@ class OceanMeshUGridTool(Tool):
                 optional=True,
             ),
             self.raster_argument(
-                name="Filename of final mesh sizing function",
-                description="The filename of the final mesh sizing function",
+                name="Filename of developed mesh sizing function",
+                description="The filename of the developed mesh sizing function",
                 io_direction=IoDirection.OUTPUT,
                 # optional=True,
                 value="final_sizing_function",
@@ -512,7 +510,7 @@ class OceanMeshUGridTool(Tool):
             return False
 
         if arguments[ARG_MAX_EDGE_LENGTH].value <= 0:
-            self.logger.error("Maximum edge length must be greater than 0")
+            self.logger.error("Maximum mesh size must be greater than 0")
             return False
 
         if (
