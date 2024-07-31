@@ -44,50 +44,51 @@ ARG_MIN_AREA_MULT = 5
 ARG_DOMAIN_COVERAGE = 6
 ARG_INVERT_DOMAIN = 7
 
-ARG_INPUT_DEM = 8
+ARG_INPUT_DEM_TOGGLE = 8
+ARG_INPUT_DEM = 9
 
-ARG_MIN_MESH_SIZE = 9
-ARG_MAX_EDGE_LENGTH = 10
+ARG_MIN_MESH_SIZE = 10
+ARG_MAX_EDGE_LENGTH = 11
 # make an arg for maximum element bounds based on depth
-ARG_MAX_ELEMENT_SIZE_BY_DEPTH = 11
-ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS = 12
+ARG_MAX_ELEMENT_SIZE_BY_DEPTH = 12
+ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS = 13
 
 
-ARG_GRADATION_RATE = 13
+ARG_GRADATION_RATE = 14
 
-ARG_SIZING_FUNCTION_1 = 14
-ARG_NUM_ELEMENTS_PER_SHORELINE = 15
-ARG_MAX_ELEMENT_SIZE_NEARSHORE = 16
-ARG_NEARSHORE_TOLERANCE = 17
+ARG_SIZING_FUNCTION_1 = 15
+ARG_NUM_ELEMENTS_PER_SHORELINE = 16
+ARG_MAX_ELEMENT_SIZE_NEARSHORE = 17
+ARG_NEARSHORE_TOLERANCE = 18
 
-ARG_SAVE_OFF_MEDIAL_AXIS = 18
-ARG_SAVE_FILENAME_MEDIAL_AXIS = 19
-ARG_LOAD_IN_MEDIAL_AXIS = 20
-ARG_LOAD_FILENAME_MEDIAL_AXIS = 21
+ARG_SAVE_OFF_MEDIAL_AXIS = 19
+ARG_SAVE_FILENAME_MEDIAL_AXIS = 20
+ARG_LOAD_IN_MEDIAL_AXIS = 21
+ARG_LOAD_FILENAME_MEDIAL_AXIS = 22
 
-ARG_SIZING_FUNCTION_2 = 22
-ARG_NUM_ELEMENTS_PER_WAVELENGTH = 23
-ARG_PERIOD_OF_WAVE = 24
+ARG_SIZING_FUNCTION_2 = 23
+ARG_NUM_ELEMENTS_PER_WAVELENGTH = 24
+ARG_PERIOD_OF_WAVE = 25
 
-ARG_SIZING_FUNCTION_3 = 25
-ARG_DESIRED_TIMESTEP = 26
-ARG_MAX_CFL = 27
+ARG_SIZING_FUNCTION_3 = 26
+ARG_DESIRED_TIMESTEP = 27
+ARG_MAX_CFL = 28
 
-ARG_FINAL_SIZING_FUNCTION_RASTER = 28
+ARG_FINAL_SIZING_FUNCTION_RASTER = 29
 
-ARG_CLEAN_MESH = 29
-ARG_MIN_BOUNDARY_QUALITY = 30
-ARG_MIN_PERCENT_DISCONN_AREA = 31
-ARG_MAX_LAPLACE_ITER = 32
-ARG_MAX_LAPLACE_MOVT_TOL = 33
+ARG_CLEAN_MESH = 30
+ARG_MIN_BOUNDARY_QUALITY = 31
+ARG_MIN_PERCENT_DISCONN_AREA = 32
+ARG_MAX_LAPLACE_ITER = 33
+ARG_MAX_LAPLACE_MOVT_TOL = 34
 
-ARG_ADV_MESH_GENERATION = 34
+ARG_ADV_MESH_GENERATION = 35
 # number of meshing iterations
-ARG_NUM_MESHING_ITERATIONS = 35
-ARG_MESHING_PSEUDO_DT = 36
-ARG_MESHING_FORCE_FUNCTION = 37
+ARG_NUM_MESHING_ITERATIONS = 36
+ARG_MESHING_PSEUDO_DT = 37
+ARG_MESHING_FORCE_FUNCTION = 38
 
-ARG_OUTPUT_UGRID = 38
+ARG_OUTPUT_UGRID = 39
 
 
 class DummyVariable:
@@ -128,26 +129,27 @@ class OceanMeshUGridTool(Tool):
         for arg in arguments:
             arg.hide = True
 
+        NEED_DEM = False
+        
         # show the selection
         arguments[ARG_TYPE_OF_INPUT].hide = False
 
         # show the input coverage arguments
-        if arguments[ARG_TYPE_OF_INPUT].value == "Map coverage":
-            # show the map coverage arguments
+        if arguments[ARG_TYPE_OF_INPUT].value == "Shoreline coverage":
             arguments[ARG_INPUT_COVERAGE].hide = False
 
         if arguments[ARG_TYPE_OF_INPUT].value == "Vector file":
-            # show the vector file arguments
             arguments[ARG_INPUT_COVERAGE_SHAPEFILE].hide = False
 
-        # make the DEM always visible
-        arguments[ARG_INPUT_DEM].hide = False
-
-        # show the maximum element size by depth arguments
+        # always show the toggle but hide the input box 
+        arguments[ARG_INPUT_DEM_TOGGLE].hide = False
+        
         arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].hide = False
         if arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].value:
             arguments[ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS].hide = False
-
+            arguments[ARG_INPUT_DEM_TOGGLE].value = True
+            NEED_DEM = True
+            
         # enable the basic arguments
         arguments[ARG_ADV_MESH_GENERATION].hide = False
         if arguments[ARG_ADV_MESH_GENERATION].value:
@@ -164,7 +166,6 @@ class OceanMeshUGridTool(Tool):
             arguments[ARG_MAX_LAPLACE_MOVT_TOL].hide = False
 
         arguments[ARG_TO_SMOOTH].hide = False
-        # hide them if the user doesn't want to modify them
         if arguments[ARG_TO_SMOOTH].value:
             arguments[ARG_SMOOTHING_WINDOW].hide = False
             arguments[ARG_MIN_AREA_MULT].hide = False
@@ -213,15 +214,27 @@ class OceanMeshUGridTool(Tool):
                 arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value = False
                 arguments[ARG_SAVE_OFF_MEDIAL_AXIS].hide = True
             
-        
-        if arguments[ARG_SIZING_FUNCTION_2].text_value == "Wavelength-to-gridscale":
+        # Toggle for the second sizing function
+        if arguments[ARG_SIZING_FUNCTION_2].value:
             arguments[ARG_NUM_ELEMENTS_PER_WAVELENGTH].hide = False
             arguments[ARG_PERIOD_OF_WAVE].hide = False
-            arguments[ARG_INPUT_DEM].hide = False
+            arguments[ARG_INPUT_DEM_TOGGLE].value = True
+            NEED_DEM = True
 
-        if arguments[ARG_SIZING_FUNCTION_3].text_value == "CFL Timestep Bounding":
+        # Toggle for the third sizing function
+        if arguments[ARG_SIZING_FUNCTION_3].value:
             arguments[ARG_DESIRED_TIMESTEP].hide = False
             arguments[ARG_MAX_CFL].hide = False
+            arguments[ARG_INPUT_DEM_TOGGLE].value = True    
+            NEED_DEM = True
+
+        if NEED_DEM:
+            arguments[ARG_INPUT_DEM_TOGGLE].value = True
+        else: 
+            arguments[ARG_INPUT_DEM_TOGGLE].value = False
+
+        # if the toggle had to be enabled show the DEM input box
+        if arguments[ARG_INPUT_DEM_TOGGLE].value:
             arguments[ARG_INPUT_DEM].hide = False
 
         return arguments
@@ -236,10 +249,10 @@ class OceanMeshUGridTool(Tool):
         """
         arguments = [
             self.string_argument(
-                name="Input Coverage Type",
+                name="Specify shoreline via",
                 description="Specify vector inputs from either a map coverage or a vector file",
                 value="Map coverage",
-                choices=["Map coverage", "Vector file"],
+                choices=["Shoreline coverage", "Vector file"],
             ),
             self.coverage_argument(
                 name="Input land polgyons from coverage",
@@ -266,8 +279,8 @@ class OceanMeshUGridTool(Tool):
                 optional=True,
             ),
             self.float_argument(
-                name="Minimum area multiplier",
-                description="Polygons with area < min_area_multi * min. mesh size**2) are removed",
+                name="Minimum area multiplier for polygon removal",
+                description="Minimum area multiplier for polygon removal",
                 value=4.0,
                 optional=True,
             ),
@@ -283,9 +296,16 @@ class OceanMeshUGridTool(Tool):
                 value=False,
                 optional=True,
             ),
+            # toggle for DEM 
+            self.bool_argument(
+                name="Specify input DEM for mesh sizing functions",
+                description="Specify input DEM for mesh sizing functions",
+                value=False,
+                optional=True,
+            ),
             # for DEM
             self.file_argument(
-                name="Input Digital Elevation Model (DEM).",
+                name="Input DEM",
                 description="Input DEM for select mesh sizing functions",
                 io_direction=IoDirection.INPUT,
                 optional=True,
@@ -303,7 +323,7 @@ class OceanMeshUGridTool(Tool):
                 value=99999.0,
                 optional=True,
             ),
-            # max element size by depth toggl e
+            # max element size by depth toggle
             self.bool_argument(
                 name="Maximum mesh size by depth",
                 description="Bound maximum mesh size by depth range",
@@ -378,12 +398,11 @@ class OceanMeshUGridTool(Tool):
                 io_direction=IoDirection.INPUT,
                 optional=True,
             ),
-            self.string_argument(
-                name="Mesh Sizing Function #2 (optional)",
-                description="Mesh sizing function #2 (optional). If selected, specify a DEM above",
-                value="None",
+            self.bool_argument(
+                name="Use wavelength to gridscale",
+                description="Use wavelength to gridscale sizing function",
+                value=False,
                 optional=True,
-                choices=["None", "Wavelength-to-gridscale"],
             ),
             # wave length to grid scale
             self.float_argument(
@@ -399,12 +418,11 @@ class OceanMeshUGridTool(Tool):
                 value=12.42 * 3600.0,  # M2 period in seconds
                 optional=True,
             ),
-            self.string_argument(
-                name="Mesh Sizing Function #3 (optional)",
-                description="Mesh sizing function #3 (optional). If selected, specify a DEM above",
-                value="None",
+            self.bool_argument(
+                name="Use CFL timestep bounding",
+                description="Use CFL timestep bounding",
+                value=False,
                 optional=True,
-                choices=["None", "CFL Timestep Bounding"],
             ),
             # cfl timestep bounding
             self.float_argument(
@@ -485,7 +503,7 @@ class OceanMeshUGridTool(Tool):
             ),
             # output mesh file
             self.grid_argument(
-                name="Filename of mesh",
+                name="Mesh name",
                 description="The filename of the generated mesh",
                 io_direction=IoDirection.OUTPUT,
             ),
@@ -548,7 +566,7 @@ class OceanMeshUGridTool(Tool):
             self.logger.error("Can't load in and save off medial axis at the same time")
             return False
         # check the second sizing function
-        if arguments[ARG_SIZING_FUNCTION_2].value == "Wavelength-to-gridscale":
+        if arguments[ARG_SIZING_FUNCTION_2].value:
             if arguments[ARG_PERIOD_OF_WAVE].value <= 0:
                 self.logger.error("Period of wave must be greater than 0")
                 return False
@@ -590,7 +608,7 @@ class OceanMeshUGridTool(Tool):
             self.logger.error("Desired timestep must be greater than 0")
             return False
         # if CFL is selected, then the DEM must be provided
-        if arguments[ARG_SIZING_FUNCTION_3].value == "CFL Timestep Bounding":
+        if arguments[ARG_SIZING_FUNCTION_3].value:
             if arguments[ARG_INPUT_DEM].value == "":
                 self.logger.error(
                     "A DEM must be provided for CFL Timestep Bounding sizing function"
