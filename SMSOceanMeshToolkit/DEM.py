@@ -10,13 +10,20 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["DEM"]
 
+def check_latitude_order(latitude):
+    # Check if the latitude array is decreasing
+    if all(latitude[i] >= latitude[i + 1] for i in range(len(latitude) - 1)):
+        order = 'increasing'
+    else:
+        order = 'decreasing'
+    return order 
 
 class DEM:
     """
     Digitial elevation model read in from a tif or NetCDF file
     """
 
-    def __init__(self, dem_filename, ll_ur=None, minimum_resolution=None, target_crs=None):
+    def __init__(self, dem_filename, ll_ur=None, minimum_resolution=None, target_crs=None, logger=None):
         """
         Read in a digitial elevation model for later use
         in developing mesh sizing functions.
@@ -34,7 +41,11 @@ class DEM:
         target_crs : str, optional
             Target coordinate reference system (default is None, which implies
             no reprojection).
+        logger : logging.Logger, optional
+            Logger object for logging messages (default is None, which implies
+            no logging).
         """
+        logger = logger or logging.getLogger(__name__)
 
         if isinstance(dem_filename, str):
             dem_filename = Path(dem_filename)
@@ -42,6 +53,10 @@ class DEM:
         if not dem_filename.exists():
             raise FileNotFoundError(f"File {dem_filename} does not exist")
         self.da = rxr.open_rasterio(dem_filename, masked=True).squeeze().drop("band")
+        # if the data is not in a DataArray, raise an error 
+        if not isinstance(self.da, xr.DataArray):
+            raise ValueError("DEM must be a DataArray. Perhaps there's multiple bands in the file?")
+        # make sure the data is 
         # check if self.da.rio.crs is None
         if self.da.rio.crs is None:
             raise ValueError("Coordinate Reference System (CRS) not found in DEM")
@@ -59,13 +74,15 @@ class DEM:
             self.da = self.ds.rename({"lon": "x"})
         if "longitude" in self.da.dims:
             self.da = self.ds.rename({"longitude": "x"})
-
+            
+        
         # clip the data to the region of interest
         if ll_ur is not None:
             self = self.clip(ll_ur)
 
         if minimum_resolution is not None:
             self = self.downsample(minimum_resolution)
+    
 
     def downsample(self, r_specified, desired_ratio=3):
         """_summary_
