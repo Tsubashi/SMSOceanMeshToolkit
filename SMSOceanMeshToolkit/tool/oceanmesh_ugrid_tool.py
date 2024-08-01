@@ -5,7 +5,6 @@ import sys, logging
 # 2. Third party modules
 import numpy as np
 import geopandas as gpd
-import matplotlib
 from pathlib import Path
 from pyproj import CRS
 from osgeo import ogr
@@ -22,8 +21,6 @@ from xms.grid.ugrid import UGrid as XmUGrid
 from xms.constraint.ugrid_builder import UGridBuilder
 from xms.gdal.vectors import VectorInput
 from xms.tool.utilities.coverage_conversion import polygons_to_shapefile, convert_points_to_coverage
-from xms.tool.utilities.file_utils import get_vector_filename
-
 
 # 4. Local modules
 import SMSOceanMeshToolkit as smsom
@@ -44,51 +41,45 @@ ARG_MIN_AREA_MULT = 5
 ARG_DOMAIN_COVERAGE = 6
 ARG_INVERT_DOMAIN = 7
 
-ARG_INPUT_DEM_TOGGLE = 8
-ARG_INPUT_DEM = 9
-
-ARG_MIN_MESH_SIZE = 10
-ARG_MAX_EDGE_LENGTH = 11
+ARG_MIN_MESH_SIZE = 8
+ARG_MAX_EDGE_LENGTH = 9
 # make an arg for maximum element bounds based on depth
-ARG_MAX_ELEMENT_SIZE_BY_DEPTH = 12
-ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS = 13
+ARG_MAX_ELEMENT_SIZE_BY_DEPTH = 10
+ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS = 11
 
+ARG_GRADATION_RATE = 12
 
-ARG_GRADATION_RATE = 14
+ARG_SIZING_FUNCTION_1 = 13
+ARG_NUM_ELEMENTS_PER_SHORELINE = 14
+ARG_MAX_ELEMENT_SIZE_NEARSHORE = 15
+ARG_NEARSHORE_TOLERANCE = 16
 
-ARG_SIZING_FUNCTION_1 = 15
-ARG_NUM_ELEMENTS_PER_SHORELINE = 16
-ARG_MAX_ELEMENT_SIZE_NEARSHORE = 17
-ARG_NEARSHORE_TOLERANCE = 18
+ARG_LOAD_FILENAME_MEDIAL_AXIS = 17
 
-ARG_SAVE_OFF_MEDIAL_AXIS = 19
-ARG_SAVE_FILENAME_MEDIAL_AXIS = 20
-ARG_LOAD_IN_MEDIAL_AXIS = 21
-ARG_LOAD_FILENAME_MEDIAL_AXIS = 22
+ARG_SIZING_FUNCTION_2 = 18
+ARG_NUM_ELEMENTS_PER_WAVELENGTH = 19
+ARG_PERIOD_OF_WAVE = 20
 
-ARG_SIZING_FUNCTION_2 = 23
-ARG_NUM_ELEMENTS_PER_WAVELENGTH = 24
-ARG_PERIOD_OF_WAVE = 25
+ARG_SIZING_FUNCTION_3 = 21
+ARG_DESIRED_TIMESTEP = 22
+ARG_MAX_CFL = 23
 
-ARG_SIZING_FUNCTION_3 = 26
-ARG_DESIRED_TIMESTEP = 27
-ARG_MAX_CFL = 28
+ARG_INPUT_DEM = 24
 
-ARG_FINAL_SIZING_FUNCTION_RASTER = 29
+ARG_CLEAN_MESH = 25
+ARG_MIN_BOUNDARY_QUALITY = 26
+ARG_MIN_PERCENT_DISCONN_AREA = 27
+ARG_MAX_LAPLACE_ITER = 28
+ARG_MAX_LAPLACE_MOVT_TOL = 29
 
-ARG_CLEAN_MESH = 30
-ARG_MIN_BOUNDARY_QUALITY = 31
-ARG_MIN_PERCENT_DISCONN_AREA = 32
-ARG_MAX_LAPLACE_ITER = 33
-ARG_MAX_LAPLACE_MOVT_TOL = 34
+ARG_ADV_MESH_GENERATION = 30
+ARG_NUM_MESHING_ITERATIONS = 31
+ARG_MESHING_PSEUDO_DT = 32
+ARG_MESHING_FORCE_FUNCTION = 33
 
-ARG_ADV_MESH_GENERATION = 35
-# number of meshing iterations
-ARG_NUM_MESHING_ITERATIONS = 36
-ARG_MESHING_PSEUDO_DT = 37
-ARG_MESHING_FORCE_FUNCTION = 38
-
-ARG_OUTPUT_UGRID = 39
+ARG_FINAL_SIZING_FUNCTION_RASTER = 34
+ARG_SAVE_FILENAME_MEDIAL_AXIS = 35
+ARG_OUTPUT_UGRID = 36
 
 
 class DummyVariable:
@@ -141,13 +132,10 @@ class OceanMeshUGridTool(Tool):
         if arguments[ARG_TYPE_OF_INPUT].value == "Vector file":
             arguments[ARG_INPUT_COVERAGE_SHAPEFILE].hide = False
 
-        # always show the toggle but hide the input box 
-        arguments[ARG_INPUT_DEM_TOGGLE].hide = False
         
         arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].hide = False
         if arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].value:
             arguments[ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS].hide = False
-            arguments[ARG_INPUT_DEM_TOGGLE].value = True
             NEED_DEM = True
             
         # enable the basic arguments
@@ -192,49 +180,23 @@ class OceanMeshUGridTool(Tool):
             arguments[ARG_NUM_ELEMENTS_PER_SHORELINE].hide = False
             arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].hide = False
             arguments[ARG_NEARSHORE_TOLERANCE].hide = False
-
-            # if the user wants to save off medial axis file, then show the argument
-            arguments[ARG_SAVE_OFF_MEDIAL_AXIS].hide = False
-            if arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
-                arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].hide = False
-
-            # if the user wants to load in a medial axis file, then show the argument
-            arguments[ARG_LOAD_IN_MEDIAL_AXIS].hide = False
-            if arguments[ARG_LOAD_IN_MEDIAL_AXIS].value:
-                arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].hide = False
-            
-            # set the save off medial axis to false as we can only load in OR save off
-            # if save off is selected, then load in must be false
-            if arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
-                arguments[ARG_LOAD_IN_MEDIAL_AXIS].value = False
-                arguments[ARG_LOAD_IN_MEDIAL_AXIS].hide = True
-            
-            # if load in medial axis is selected, then save off must be false
-            if arguments[ARG_LOAD_IN_MEDIAL_AXIS].value:
-                arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value = False
-                arguments[ARG_SAVE_OFF_MEDIAL_AXIS].hide = True
+            # show the option to save off the medial axis
+            arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].hide = False
+            arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].hide = False
             
         # Toggle for the second sizing function
         if arguments[ARG_SIZING_FUNCTION_2].value:
             arguments[ARG_NUM_ELEMENTS_PER_WAVELENGTH].hide = False
             arguments[ARG_PERIOD_OF_WAVE].hide = False
-            arguments[ARG_INPUT_DEM_TOGGLE].value = True
             NEED_DEM = True
 
         # Toggle for the third sizing function
         if arguments[ARG_SIZING_FUNCTION_3].value:
             arguments[ARG_DESIRED_TIMESTEP].hide = False
             arguments[ARG_MAX_CFL].hide = False
-            arguments[ARG_INPUT_DEM_TOGGLE].value = True    
             NEED_DEM = True
 
         if NEED_DEM:
-            arguments[ARG_INPUT_DEM_TOGGLE].value = True
-        else: 
-            arguments[ARG_INPUT_DEM_TOGGLE].value = False
-
-        # if the toggle had to be enabled show the DEM input box
-        if arguments[ARG_INPUT_DEM_TOGGLE].value:
             arguments[ARG_INPUT_DEM].hide = False
 
         return arguments
@@ -249,19 +211,19 @@ class OceanMeshUGridTool(Tool):
         """
         arguments = [
             self.string_argument(
-                name="Specify shoreline via",
-                description="Specify vector inputs from either a map coverage or a vector file",
-                value="Map coverage",
+                name="Shoreline/Land polygon format",
+                description="Shoreline/Land polygon format",
+                value="Shoreline coverage",
                 choices=["Shoreline coverage", "Vector file"],
             ),
             self.coverage_argument(
-                name="Input land polgyons from coverage",
-                description="Input land polygons as a map coverage",
+                name="Land polygon coverage",
+                description="Land polygon coverage",
                 optional=True,
             ),
             self.file_argument(
-                name="Input land polygons as vector file",
-                description="Input land polygons as a vector file",
+                name="Land polygon vector file",
+                description="Land polygon vector file",
                 io_direction=IoDirection.INPUT,
                 optional=True,
                 value="",
@@ -272,10 +234,10 @@ class OceanMeshUGridTool(Tool):
                 value=False,
                 optional=True,
             ),
-            self.float_argument(
+            self.integer_argument(
                 name="Moving smoothing window",
-                description="Smoothing window applied to polygons (must be odd number or 0)",
-                value=5.0,
+                description="Smoothing window applied to polygons (must be odd integer or 0)",
+                value=5,
                 optional=True,
             ),
             self.float_argument(
@@ -286,7 +248,7 @@ class OceanMeshUGridTool(Tool):
             ),
             self.coverage_argument(
                 name="Domain coverage",
-                description="Domain coverage as a polygon",
+                description="Domain coverage",
                 optional=True,
             ),
             # invert domain
@@ -294,20 +256,6 @@ class OceanMeshUGridTool(Tool):
                 name="Invert domain coverage",
                 description="Invert the area to-be-meshed (area meshed becomes land if was water and vice versa)",
                 value=False,
-                optional=True,
-            ),
-            # toggle for DEM 
-            self.bool_argument(
-                name="Specify input DEM for mesh sizing functions",
-                description="Specify input DEM for mesh sizing functions",
-                value=False,
-                optional=True,
-            ),
-            # for DEM
-            self.file_argument(
-                name="Input DEM",
-                description="Input DEM for select mesh sizing functions",
-                io_direction=IoDirection.INPUT,
                 optional=True,
             ),
             # min mesh size
@@ -346,8 +294,8 @@ class OceanMeshUGridTool(Tool):
             ),
             # below are the mesh sizing functions selections
             self.string_argument(
-                name="Mesh Sizing Function #1 (required)",
-                description="Mesh sizing function #1 (required)",
+                name="Principal mesh sizing function",
+                description="Principal mesh sizing function",
                 value="Distance",
                 choices=["Distance", "Feature-size"],
             ),
@@ -370,31 +318,10 @@ class OceanMeshUGridTool(Tool):
                 value=1000.0,
                 optional=True,
             ),
-            # boolean 
-            self.bool_argument(
-                name="Save and Display approximate medial axis",
-                description="Save and Display the approximate medial axis",
-                value=False,
-                optional=True,
-            ),
-            # save filename
-            self.file_argument(
-                name="Filename to save approximate medial axis",
-                description="Filename to save approximate medial axis",
-                io_direction=IoDirection.OUTPUT,
-                optional=True,
-            ),
-            # boolean 
-            self.bool_argument(
-                name="Load and Display approximate medial axis",
-                description="Load and Display approximate medial axis",
-                value=False,
-                optional=True,
-            ),
             # load filename
             self.file_argument(
-                name="Filename to load approximate medial axis",
-                description="Filename to load approximate medial axis",
+                name="Input approximate medial axis",
+                description="Input approximate medial axis",
                 io_direction=IoDirection.INPUT,
                 optional=True,
             ),
@@ -437,12 +364,12 @@ class OceanMeshUGridTool(Tool):
                 value=0.8,
                 optional=True,
             ),
-            self.raster_argument(
-                name="Filename of developed mesh sizing function",
-                description="The filename of the developed mesh sizing function",
-                io_direction=IoDirection.OUTPUT,
-                # optional=True,
-                value="final_sizing_function",
+            # for DEM
+            self.file_argument(
+                name="Input DEM",
+                description="Input DEM for select mesh sizing functions",
+                io_direction=IoDirection.INPUT,
+                optional=True,
             ),
             self.bool_argument(
                 name="Modify mesh cleaning options",
@@ -501,10 +428,21 @@ class OceanMeshUGridTool(Tool):
                 optional=True,
                 choices=["bossen_heckbert", "persson_strang"],
             ),
-            # output mesh file
+            self.raster_argument(
+                name="Output mesh sizing function",
+                description="Output mesh sizing function",
+                io_direction=IoDirection.OUTPUT,
+                value="final_sizing_function",
+            ),
+            self.file_argument(
+                name="Output approximate medial axis",
+                description="Output approximate medial axis",
+                io_direction=IoDirection.OUTPUT,
+                optional=True,
+            ),
             self.grid_argument(
-                name="Mesh name",
-                description="The filename of the generated mesh",
+                name="Output mesh",
+                description="Output mesh",
                 io_direction=IoDirection.OUTPUT,
             ),
         ]
@@ -552,17 +490,7 @@ class OceanMeshUGridTool(Tool):
             self.logger.error("Nearshore tolerance must be greater than 0")
             return False
         # check if loading in or saving off medial axis
-        if arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
-            if arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value == "":
-                self.logger.error("Filename to save medial axis must be provided")
-                return False
-        # make sure either save off or load in medial axis is selected
-        if arguments[ARG_LOAD_IN_MEDIAL_AXIS].value:
-            if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value == "":
-                self.logger.error("Filename to load medial axis must be provided")
-                return False
-        # load in and save off can't both be true 
-        if arguments[ARG_LOAD_IN_MEDIAL_AXIS].value and arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
+        if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != "" and arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != "":
             self.logger.error("Can't load in and save off medial axis at the same time")
             return False
         # check the second sizing function
@@ -797,8 +725,10 @@ class OceanMeshUGridTool(Tool):
             
             epsg_code = "EPSG:4326"
         else:
+
             # Create a CRS object from the WKT string
             crs = CRS.from_wkt(wkt)
+
             # Get the EPSG code
             epsg_code = crs.to_epsg()
 
@@ -877,8 +807,15 @@ class OceanMeshUGridTool(Tool):
 
             # if the user is not going to load in a medial axis file
             # calculate the medial axis and save it off
-            if arguments[ARG_LOAD_IN_MEDIAL_AXIS].value == False:
+            if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != "":
                 self.logger.info("Building medial axis...")
+                
+                # set the save_medial_axis 
+                if arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != "":
+                    save_off_medial_axis = True
+                else: 
+                    save_off_medial_axis = False
+                    
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
                     coastal_geometry,
@@ -886,16 +823,17 @@ class OceanMeshUGridTool(Tool):
                     max_edge_length=max_mesh_size,
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
-                    save_medial_axis=arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value, # save the medial axis medial_axis.gpkg file
+                    save_medial_axis=save_off_medial_axis, 
                     medial_axis_file=arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, 
                     logger=self.logger,
                 )
-                if arguments[ARG_SAVE_OFF_MEDIAL_AXIS].value:
+                if save_off_medial_axis:
                     # Display the medial axis on the map since it was saved
                     self._push_to_gui(arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, "approximate_medial_axis", wkt)
 
             else:
                 self.logger.info("Loading in medial axis...")
+
                 # load in the medial axis file from a location specified by the user
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
@@ -1004,6 +942,6 @@ class OceanMeshUGridTool(Tool):
         b.set_ugrid(ugrid)
         b = b.build_grid()
 
-        self.set_output_grid(b, arguments[ARG_OUTPUT_UGRID])
+        self.set_output_grid(b, arguments[ARG_OUTPUT_UGRID], force_ugrid=self._force_ugrid)
 
         self.set_output_raster_file(out_path, out_file)
