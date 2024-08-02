@@ -262,14 +262,12 @@ class OceanMeshUGridTool(Tool):
             self.float_argument(
                 name="Minimum mesh size",
                 description="Minimum mesh size (ft/m)",
-                value=1000.0,
             ),
             # max edge length
             self.float_argument(
                 name="Maximum mesh size",
                 description="Maximum mesh size (ft/m)",
-                value=99999.0,
-                optional=True,
+                optional=False,
             ),
             # max element size by depth toggle
             self.bool_argument(
@@ -309,8 +307,7 @@ class OceanMeshUGridTool(Tool):
             self.float_argument(
                 name="Maximum mesh size nearshore (ft/m)",
                 description="Maximum mesh size nearshore (ft/m)",
-                value=99999.0,
-                optional=True,
+                optional=False,
             ),
             self.float_argument(
                 name="Nearshore tolerance (ft/m)",
@@ -432,7 +429,6 @@ class OceanMeshUGridTool(Tool):
                 name="Output mesh sizing function",
                 description="Output mesh sizing function",
                 io_direction=IoDirection.OUTPUT,
-                value="final_sizing_function",
             ),
             self.file_argument(
                 name="Output approximate medial axis",
@@ -483,14 +479,16 @@ class OceanMeshUGridTool(Tool):
         if arguments[ARG_NUM_ELEMENTS_PER_SHORELINE].value <= 0:
             self.logger.error("Number of elements per shoreline must be greater than 0")
             return False
-        if arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].value <= 0:
-            self.logger.error("Maximum element size nearshore must be greater than 0")
-            return False
+        # check if None first 
+        if arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].value != None:
+            if arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].value <= 0:
+                self.logger.error("Maximum element size nearshore must be greater than 0")
+                return False
         if arguments[ARG_NEARSHORE_TOLERANCE].value <= 0:
             self.logger.error("Nearshore tolerance must be greater than 0")
             return False
         # check if loading in or saving off medial axis
-        if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != "" and arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != "":
+        if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != None and arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != None:
             self.logger.error("Can't load in and save off medial axis at the same time")
             return False
         # check the second sizing function
@@ -499,7 +497,7 @@ class OceanMeshUGridTool(Tool):
                 self.logger.error("Period of wave must be greater than 0")
                 return False
             # ensure there's a DEM
-            if arguments[ARG_INPUT_DEM].value == "":
+            if arguments[ARG_INPUT_DEM].value == None:
                 self.logger.error(
                     "A DEM must be provided for wavelength-to-gridscale sizing function"
                 )
@@ -537,7 +535,7 @@ class OceanMeshUGridTool(Tool):
             return False
         # if CFL is selected, then the DEM must be provided
         if arguments[ARG_SIZING_FUNCTION_3].value:
-            if arguments[ARG_INPUT_DEM].value == "":
+            if arguments[ARG_INPUT_DEM].value == None:
                 self.logger.error(
                     "A DEM must be provided for CFL Timestep Bounding sizing function"
                 )
@@ -545,7 +543,7 @@ class OceanMeshUGridTool(Tool):
         # if max element size by depth is selected, then the bounds must be provided
         if arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].value:
             # make sure a DEM is provided
-            if arguments[ARG_INPUT_DEM].value == "":
+            if arguments[ARG_INPUT_DEM].value == None:
                 self.logger.error(
                     "A DEM must be provided for maximum element size by depth"
                 )
@@ -627,8 +625,8 @@ class OceanMeshUGridTool(Tool):
         Args:
             arguments (list): The tool arguments.
         """
-        #import time
-        #time.sleep(20)
+        import time
+        time.sleep(15)
 
         self._validate_arguments(arguments)
 
@@ -717,8 +715,11 @@ class OceanMeshUGridTool(Tool):
         if sr.IsGeographic():
             min_mesh_size /= 111000.0  # Approximate meters per degree
             max_mesh_size /= 111000.0  # Approximate meters per degree
-            max_size_nearshore /= 111000.0  # Approximate meters per degree
-            nearshore_tolerance /= 111000.0  # Approximate meters per degree
+            # only divide if not None 
+            if max_size_nearshore != None:
+                max_size_nearshore /= 111000.0  # Approximate meters per degree
+            if nearshore_tolerance != None:
+                nearshore_tolerance /= 111000.0  # Approximate meters per degree
 
             if enforce_max_by_depth:
                 size_bound /= 111000.0
@@ -780,7 +781,7 @@ class OceanMeshUGridTool(Tool):
         SZFX_COUNT = 1
 
         # if the dem is available, then build the first sizing function
-        if arguments[ARG_INPUT_DEM].value != "":
+        if arguments[ARG_INPUT_DEM].value != None:
 
             self.logger.info("Building the DEM inputs...")
             dem = smsom.DEM(
@@ -807,11 +808,11 @@ class OceanMeshUGridTool(Tool):
 
             # if the user is not going to load in a medial axis file
             # calculate the medial axis and save it off
-            if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != "":
+            if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != None:
                 self.logger.info("Building medial axis...")
                 
                 # set the save_medial_axis 
-                if arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != "":
+                if arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != None:
                     save_off_medial_axis = True
                 else: 
                     save_off_medial_axis = False
@@ -942,6 +943,6 @@ class OceanMeshUGridTool(Tool):
         b.set_ugrid(ugrid)
         b = b.build_grid()
 
-        self.set_output_grid(b, arguments[ARG_OUTPUT_UGRID], force_ugrid=self._force_ugrid)
+        self.set_output_grid(b, arguments[ARG_OUTPUT_UGRID], force_ugrid=False)
 
         self.set_output_raster_file(out_path, out_file)
