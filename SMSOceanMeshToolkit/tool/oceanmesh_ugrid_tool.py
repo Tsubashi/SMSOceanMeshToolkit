@@ -434,7 +434,7 @@ class OceanMeshUGridTool(Tool):
                 name="Output approximate medial axis",
                 description="Output approximate medial axis",
                 io_direction=IoDirection.OUTPUT,
-                optional=True,
+                optional=False,
             ),
             self.grid_argument(
                 name="Output mesh",
@@ -488,7 +488,7 @@ class OceanMeshUGridTool(Tool):
             self.logger.error("Nearshore tolerance must be greater than 0")
             return False
         # check if loading in or saving off medial axis
-        if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != None and arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != None:
+        if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != '' and arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != '':
             self.logger.error("Can't load in and save off medial axis at the same time")
             return False
         # check the second sizing function
