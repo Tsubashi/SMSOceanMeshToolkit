@@ -439,11 +439,8 @@ def feature_sizing_function(
     x, y = grid_calc.create_grid()
     qpts = np.column_stack((x.flatten(), y.flatten()))
 
-    # check the existence ofof the medial axis points
-    if save_medial_axis and medial_axis_points is not None:
-
-        logger.info(f"Using the provided medial axis points from {medial_axis_points}")
-        
+    # if the medial axis points are provided, use them 
+    if medial_axis_points is not None:
         assert isinstance(medial_axis_points, str), "A path to a vector file must be provided"
         assert Path(medial_axis_points).exists(), "The path to the vector file does not exist"
         logger.info(f"Using the provided medial axis points from {medial_axis_points}")
@@ -451,6 +448,7 @@ def feature_sizing_function(
         medial_points = np.column_stack((gdf.geometry.x, gdf.geometry.y))
 
     else:
+        # otherwise calculate the medial axis
         logger.info("Calculating the medial axis...")
         
         phi = my_signed_distance_function.eval(qpts)
@@ -470,8 +468,7 @@ def feature_sizing_function(
         medial_points_y = y[indicies_medial_points]
         medial_points = np.column_stack((medial_points_x, medial_points_y))
     
-    # save the medial axis points as a vector file 
-    # iff save_medial_axis is True and the medial_axis_points is not None
+    # iff save_medial_axis is True 
     if save_medial_axis:
         logger.info(f"Returning the medial axis as a vector file {medial_axis_file}...")
         

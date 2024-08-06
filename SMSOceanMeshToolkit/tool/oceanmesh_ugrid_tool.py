@@ -54,32 +54,33 @@ ARG_NUM_ELEMENTS_PER_SHORELINE = 14
 ARG_MAX_ELEMENT_SIZE_NEARSHORE = 15
 ARG_NEARSHORE_TOLERANCE = 16
 
-ARG_LOAD_FILENAME_MEDIAL_AXIS = 17
+ARG_MEDIAL_AXIS_DIALOG = 17
+ARG_MEDIAL_AXIS_INPUT = 18
+ARG_MEDIAL_AXIS_OUTPUT = 19
 
-ARG_SIZING_FUNCTION_2 = 18
-ARG_NUM_ELEMENTS_PER_WAVELENGTH = 19
-ARG_PERIOD_OF_WAVE = 20
+ARG_SIZING_FUNCTION_2 = 20
+ARG_NUM_ELEMENTS_PER_WAVELENGTH = 21
+ARG_PERIOD_OF_WAVE = 22
 
-ARG_SIZING_FUNCTION_3 = 21
-ARG_DESIRED_TIMESTEP = 22
-ARG_MAX_CFL = 23
+ARG_SIZING_FUNCTION_3 = 23
+ARG_DESIRED_TIMESTEP = 24
+ARG_MAX_CFL = 25
 
-ARG_INPUT_DEM = 24
+ARG_INPUT_DEM = 26
 
-ARG_CLEAN_MESH = 25
-ARG_MIN_BOUNDARY_QUALITY = 26
-ARG_MIN_PERCENT_DISCONN_AREA = 27
-ARG_MAX_LAPLACE_ITER = 28
-ARG_MAX_LAPLACE_MOVT_TOL = 29
+ARG_CLEAN_MESH = 27
+ARG_MIN_BOUNDARY_QUALITY = 28
+ARG_MIN_PERCENT_DISCONN_AREA = 29
+ARG_MAX_LAPLACE_ITER = 30
+ARG_MAX_LAPLACE_MOVT_TOL = 31
 
-ARG_ADV_MESH_GENERATION = 30
-ARG_NUM_MESHING_ITERATIONS = 31
-ARG_MESHING_PSEUDO_DT = 32
-ARG_MESHING_FORCE_FUNCTION = 33
+ARG_ADV_MESH_GENERATION = 32
+ARG_NUM_MESHING_ITERATIONS = 33
+ARG_MESHING_PSEUDO_DT = 34
+ARG_MESHING_FORCE_FUNCTION = 35
 
-ARG_FINAL_SIZING_FUNCTION_RASTER = 34
-ARG_SAVE_FILENAME_MEDIAL_AXIS = 35
-ARG_OUTPUT_UGRID = 36
+ARG_FINAL_SIZING_FUNCTION_RASTER = 36
+ARG_OUTPUT_UGRID = 37
 
 
 class DummyVariable:
@@ -131,8 +132,7 @@ class OceanMeshUGridTool(Tool):
 
         if arguments[ARG_TYPE_OF_INPUT].value == "Vector file":
             arguments[ARG_INPUT_COVERAGE_SHAPEFILE].hide = False
-
-        
+       
         arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].hide = False
         if arguments[ARG_MAX_ELEMENT_SIZE_BY_DEPTH].value:
             arguments[ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS].hide = False
@@ -177,12 +177,18 @@ class OceanMeshUGridTool(Tool):
         arguments[ARG_OUTPUT_UGRID].hide = False
 
         if arguments[ARG_SIZING_FUNCTION_1].text_value == "Feature-size":
+
             arguments[ARG_NUM_ELEMENTS_PER_SHORELINE].hide = False
             arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].hide = False
             arguments[ARG_NEARSHORE_TOLERANCE].hide = False
+
             # show the option to save off the medial axis
-            arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].hide = False
-            arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].hide = False
+            arguments[ARG_MEDIAL_AXIS_DIALOG].hide = False
+            # if the user wants to load in a medial axis file
+            if arguments[ARG_MEDIAL_AXIS_DIALOG].value == "Use existing medial axis":
+                arguments[ARG_MEDIAL_AXIS_INPUT].hide = False
+            elif arguments[ARG_MEDIAL_AXIS_DIALOG].value == "Compute & output medial axis":
+                arguments[ARG_MEDIAL_AXIS_OUTPUT].hide = False
             
         # Toggle for the second sizing function
         if arguments[ARG_SIZING_FUNCTION_2].value:
@@ -315,11 +321,27 @@ class OceanMeshUGridTool(Tool):
                 value=1000.0,
                 optional=True,
             ),
-            # load filename
+            # dialog drop down for medial axis 
+            self.string_argument(
+                name="Medial axis dialog",
+                description="Medial axis dialog",
+                value="Compute & output medial axis",
+                choices=["Use existing medial axis", "Compute & output medial axis"],
+            ),
+            # if the user wants to load in a medial axis file
             self.file_argument(
-                name="Input approximate medial axis",
-                description="Input approximate medial axis",
+                name="Load medial axis file",
+                description="Load medial axis file",
                 io_direction=IoDirection.INPUT,
+                value=None,
+                optional=True,
+            ),
+            # if the user wants to save off the medial axis
+            self.file_argument(
+                name="Save medial axis file",
+                description="Save medial axis file",
+                io_direction=IoDirection.OUTPUT,
+                value=None,
                 optional=True,
             ),
             self.bool_argument(
@@ -406,7 +428,7 @@ class OceanMeshUGridTool(Tool):
                 value=False,
                 optional=True,
             ),
-            self.float_argument(
+            self.integer_argument(
                 name="Number of meshing iterations",
                 description="Number of meshing iterations",
                 value=50,
@@ -429,12 +451,6 @@ class OceanMeshUGridTool(Tool):
                 name="Output mesh sizing function",
                 description="Output mesh sizing function",
                 io_direction=IoDirection.OUTPUT,
-            ),
-            self.file_argument(
-                name="Output approximate medial axis",
-                description="Output approximate medial axis",
-                io_direction=IoDirection.OUTPUT,
-                optional=False,
             ),
             self.grid_argument(
                 name="Output mesh",
@@ -486,10 +502,6 @@ class OceanMeshUGridTool(Tool):
                 return False
         if arguments[ARG_NEARSHORE_TOLERANCE].value <= 0:
             self.logger.error("Nearshore tolerance must be greater than 0")
-            return False
-        # check if loading in or saving off medial axis
-        if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != '' and arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != '':
-            self.logger.error("Can't load in and save off medial axis at the same time")
             return False
         # check the second sizing function
         if arguments[ARG_SIZING_FUNCTION_2].value:
@@ -806,17 +818,10 @@ class OceanMeshUGridTool(Tool):
 
             self.logger.info("Using feature size mesh sizing function")
 
-            # if the user is not going to load in a medial axis file
-            # calculate the medial axis and save it off
-            if arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value != None:
+            if arguments[ARG_MEDIAL_AXIS_OUTPUT].value != None:
+                # compute the medial axis and save it off
                 self.logger.info("Building medial axis...")
                 
-                # set the save_medial_axis 
-                if arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value != None:
-                    save_off_medial_axis = True
-                else: 
-                    save_off_medial_axis = False
-                    
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
                     coastal_geometry,
@@ -824,13 +829,12 @@ class OceanMeshUGridTool(Tool):
                     max_edge_length=max_mesh_size,
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
-                    save_medial_axis=save_off_medial_axis, 
-                    medial_axis_file=arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, 
+                    save_medial_axis=True, 
+                    medial_axis_file=arguments[ARG_MEDIAL_AXIS_OUTPUT].value, 
                     logger=self.logger,
                 )
-                if save_off_medial_axis:
-                    # Display the medial axis on the map since it was saved
-                    self._push_to_gui(arguments[ARG_SAVE_FILENAME_MEDIAL_AXIS].value, "approximate_medial_axis", wkt)
+                # Display the medial axis on the map since it was saved
+                self._push_to_gui(arguments[ARG_MEDIAL_AXIS_OUTPUT].value, "approximate_medial_axis", wkt)
 
             else:
                 self.logger.info("Loading in medial axis...")
@@ -843,11 +847,12 @@ class OceanMeshUGridTool(Tool):
                     max_edge_length=max_mesh_size,
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
-                    medial_axis_points=arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value, 
+                    save_medial_axis=False,
+                    medial_axis_points=arguments[ARG_MEDIAL_AXIS_INPUT].value, 
                     logger=self.logger,
                 )
                 # file is being loaded so it must exist, lets display it
-                self._push_to_gui(arguments[ARG_LOAD_FILENAME_MEDIAL_AXIS].value, "approximate_medial_axis", wkt)
+                self._push_to_gui(arguments[ARG_MEDIAL_AXIS_INPUT].value, "approximate_medial_axis", wkt)
 
                 
 
