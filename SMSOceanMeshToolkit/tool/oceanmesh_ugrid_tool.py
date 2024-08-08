@@ -43,7 +43,6 @@ ARG_INVERT_DOMAIN = 7
 
 ARG_MIN_MESH_SIZE = 8
 ARG_MAX_EDGE_LENGTH = 9
-# make an arg for maximum element bounds based on depth
 ARG_MAX_ELEMENT_SIZE_BY_DEPTH = 10
 ARG_MAX_ELEMENT_SIZES_BY_DEPTH_BOUNDS = 11
 
@@ -52,35 +51,34 @@ ARG_GRADATION_RATE = 12
 ARG_SIZING_FUNCTION_1 = 13
 ARG_NUM_ELEMENTS_PER_SHORELINE = 14
 ARG_MAX_ELEMENT_SIZE_NEARSHORE = 15
-ARG_NEARSHORE_TOLERANCE = 16
 
-ARG_MEDIAL_AXIS_DIALOG = 17
-ARG_MEDIAL_AXIS_INPUT = 18
-ARG_MEDIAL_AXIS_OUTPUT = 19
+ARG_MEDIAL_AXIS_DIALOG = 16
+ARG_MEDIAL_AXIS_INPUT = 17
+ARG_MEDIAL_AXIS_OUTPUT = 18
 
-ARG_SIZING_FUNCTION_2 = 20
-ARG_NUM_ELEMENTS_PER_WAVELENGTH = 21
-ARG_PERIOD_OF_WAVE = 22
+ARG_SIZING_FUNCTION_2 = 19
+ARG_NUM_ELEMENTS_PER_WAVELENGTH = 20
+ARG_PERIOD_OF_WAVE = 21
 
-ARG_SIZING_FUNCTION_3 = 23
-ARG_DESIRED_TIMESTEP = 24
-ARG_MAX_CFL = 25
+ARG_SIZING_FUNCTION_3 = 22
+ARG_DESIRED_TIMESTEP = 23
+ARG_MAX_CFL = 24
 
-ARG_INPUT_DEM = 26
+ARG_INPUT_DEM = 25
 
-ARG_CLEAN_MESH = 27
-ARG_MIN_BOUNDARY_QUALITY = 28
-ARG_MIN_PERCENT_DISCONN_AREA = 29
-ARG_MAX_LAPLACE_ITER = 30
-ARG_MAX_LAPLACE_MOVT_TOL = 31
+ARG_CLEAN_MESH = 26
+ARG_MIN_BOUNDARY_QUALITY = 27
+ARG_MIN_PERCENT_DISCONN_AREA = 28
+ARG_MAX_LAPLACE_ITER = 29
+ARG_MAX_LAPLACE_MOVT_TOL = 30
 
-ARG_ADV_MESH_GENERATION = 32
-ARG_NUM_MESHING_ITERATIONS = 33
-ARG_MESHING_PSEUDO_DT = 34
-ARG_MESHING_FORCE_FUNCTION = 35
+ARG_ADV_MESH_GENERATION = 31
+ARG_NUM_MESHING_ITERATIONS = 32
+ARG_MESHING_PSEUDO_DT = 33
+ARG_MESHING_FORCE_FUNCTION = 34
 
-ARG_FINAL_SIZING_FUNCTION_RASTER = 36
-ARG_OUTPUT_UGRID = 37
+ARG_FINAL_SIZING_FUNCTION_RASTER = 35
+ARG_OUTPUT_UGRID = 36
 
 
 class DummyVariable:
@@ -180,7 +178,6 @@ class OceanMeshUGridTool(Tool):
 
             arguments[ARG_NUM_ELEMENTS_PER_SHORELINE].hide = False
             arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].hide = False
-            arguments[ARG_NEARSHORE_TOLERANCE].hide = False
 
             # show the option to save off the medial axis
             arguments[ARG_MEDIAL_AXIS_DIALOG].hide = False
@@ -245,35 +242,36 @@ class OceanMeshUGridTool(Tool):
                 description="Smoothing window applied to polygons (must be odd integer or 0)",
                 value=5,
                 optional=True,
+                min_value=0,
             ),
             self.float_argument(
                 name="Minimum area multiplier for polygon removal",
                 description="Minimum area multiplier for polygon removal",
                 value=4.0,
                 optional=True,
+                min_value=0.0, 
             ),
             self.coverage_argument(
                 name="Domain coverage",
                 description="Domain coverage",
                 optional=True,
             ),
-            # invert domain
             self.bool_argument(
                 name="Invert domain coverage",
                 description="Invert the area to-be-meshed (area meshed becomes land if was water and vice versa)",
                 value=False,
                 optional=True,
             ),
-            # min mesh size
             self.float_argument(
                 name="Minimum mesh size",
                 description="Minimum mesh size (ft/m)",
+                min_value=0.0, 
             ),
-            # max edge length
             self.float_argument(
                 name="Maximum mesh size",
                 description="Maximum mesh size (ft/m)",
                 optional=False,
+                min_value=0.0,
             ),
             # max element size by depth toggle
             self.bool_argument(
@@ -295,6 +293,7 @@ class OceanMeshUGridTool(Tool):
                 description="Rate of change",
                 value=0.05,
                 optional=True,
+                min_value=1e-9, 
             ),
             # below are the mesh sizing functions selections
             self.string_argument(
@@ -309,17 +308,13 @@ class OceanMeshUGridTool(Tool):
                 description="Number of elements per estimated shoreline width",
                 value=3,
                 optional=True,
+                min_value=1,
             ),
             self.float_argument(
                 name="Maximum mesh size nearshore (ft/m)",
                 description="Maximum mesh size nearshore (ft/m)",
                 optional=False,
-            ),
-            self.float_argument(
-                name="Nearshore tolerance (ft/m)",
-                description="Distance from shoreline (ft/m) used to enforce the maximum mesh size nearshore",
-                value=1000.0,
-                optional=True,
+                min_value=0.0,
             ),
             # dialog drop down for medial axis 
             self.string_argument(
@@ -329,19 +324,17 @@ class OceanMeshUGridTool(Tool):
                 choices=["Use existing medial axis", "Compute & output medial axis"],
             ),
             # if the user wants to load in a medial axis file
-            self.file_argument(
+            self.string_argument(
                 name="Load medial axis file",
                 description="Load medial axis file",
-                io_direction=IoDirection.INPUT,
-                value=None,
+                value='None',
                 optional=True,
             ),
             # if the user wants to save off the medial axis
-            self.file_argument(
+            self.string_argument(
                 name="Save medial axis file",
                 description="Save medial axis file",
-                io_direction=IoDirection.OUTPUT,
-                value=None,
+                value='None',
                 optional=True,
             ),
             self.bool_argument(
@@ -356,6 +349,7 @@ class OceanMeshUGridTool(Tool):
                 description="Number of elements per wavelength",
                 value=300,
                 optional=True,
+                min_value=1,
             ),
             # period of wave 12.42 hours by default
             self.float_argument(
@@ -363,6 +357,7 @@ class OceanMeshUGridTool(Tool):
                 description="Period of wave (seconds)",
                 value=12.42 * 3600.0,  # M2 period in seconds
                 optional=True,
+                min_value=1e-9,
             ),
             self.bool_argument(
                 name="Use CFL timestep bounding",
@@ -370,18 +365,19 @@ class OceanMeshUGridTool(Tool):
                 value=False,
                 optional=True,
             ),
-            # cfl timestep bounding
             self.float_argument(
                 name="Desired Simulation Timestep",
                 description="Maximum allowable timestep (seconds)",
                 value=1.0,
                 optional=True,
+                min_value=1e-9,
             ),
             self.float_argument(
                 name="Maximum Allowable Courant Number",
                 description="Maximum allowable Courant number for given timestep",
                 value=0.8,
                 optional=True,
+                min_value=1e-9,
             ),
             # for DEM
             self.file_argument(
@@ -391,8 +387,8 @@ class OceanMeshUGridTool(Tool):
                 optional=True,
             ),
             self.bool_argument(
-                name="Modify mesh cleaning options",
-                description="Modify the mesh cleaning options...",
+                name="Modify mesh cleaning options (advanced)",
+                description="Modify the mesh cleaning options (advanced)...",
                 value=False,
                 optional=True,
             ),
@@ -423,8 +419,8 @@ class OceanMeshUGridTool(Tool):
             ),
             # boolean for advanced mesh generation
             self.bool_argument(
-                name="Advanced mesh generation options",
-                description="Modify mesh generation options",
+                name="Mesh generation options (advanced)",
+                description="Modify mesh generation options (advanced)",
                 value=False,
                 optional=True,
             ),
@@ -433,12 +429,14 @@ class OceanMeshUGridTool(Tool):
                 description="Number of meshing iterations",
                 value=50,
                 optional=True,
+                min_value=2,
             ),
             self.float_argument(
                 name="Pseudo timestep for meshing",
                 description="Pseudo timestep for meshing",
                 value=0.1,
                 optional=True,
+                min_value=1e-9,
             ),
             self.string_argument(
                 name="Force function for edges of mesh",
@@ -500,9 +498,6 @@ class OceanMeshUGridTool(Tool):
             if arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].value <= 0:
                 self.logger.error("Maximum element size nearshore must be greater than 0")
                 return False
-        if arguments[ARG_NEARSHORE_TOLERANCE].value <= 0:
-            self.logger.error("Nearshore tolerance must be greater than 0")
-            return False
         # check the second sizing function
         if arguments[ARG_SIZING_FUNCTION_2].value:
             if arguments[ARG_PERIOD_OF_WAVE].value <= 0:
@@ -681,7 +676,7 @@ class OceanMeshUGridTool(Tool):
         max_mesh_size = arguments[ARG_MAX_EDGE_LENGTH].value
 
         max_size_nearshore = arguments[ARG_MAX_ELEMENT_SIZE_NEARSHORE].value
-        nearshore_tolerance = arguments[ARG_NEARSHORE_TOLERANCE].value
+        #nearshore_tolerance = arguments[ARG_NEARSHORE_TOLERANCE].value
 
         rate_of_change = arguments[ARG_GRADATION_RATE].value
 
@@ -730,14 +725,17 @@ class OceanMeshUGridTool(Tool):
             # only divide if not None 
             if max_size_nearshore != None:
                 max_size_nearshore /= 111000.0  # Approximate meters per degree
-            if nearshore_tolerance != None:
-                nearshore_tolerance /= 111000.0  # Approximate meters per degree
+
+            nearshore_tolerance = 1000.0
+            nearshore_tolerance /= 111000.0  # Approximate meters per degree
 
             if enforce_max_by_depth:
                 size_bound /= 111000.0
             
             epsg_code = "EPSG:4326"
         else:
+
+            nearshore_tolerance = 1000.0 
 
             # Create a CRS object from the WKT string
             crs = CRS.from_wkt(wkt)
@@ -818,10 +816,13 @@ class OceanMeshUGridTool(Tool):
 
             self.logger.info("Using feature size mesh sizing function")
 
-            if arguments[ARG_MEDIAL_AXIS_OUTPUT].value != None:
+            if arguments[ARG_MEDIAL_AXIS_OUTPUT].value != 'None':
                 # compute the medial axis and save it off
                 self.logger.info("Building medial axis...")
-                
+                maf = arguments[ARG_MEDIAL_AXIS_OUTPUT].value
+                # if maf doesn't have .shp at the end add it 
+                if not maf.endswith(".shp"):
+                    maf = maf + ".shp"
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
                     coastal_geometry,
@@ -830,7 +831,7 @@ class OceanMeshUGridTool(Tool):
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
                     save_medial_axis=True, 
-                    medial_axis_file=arguments[ARG_MEDIAL_AXIS_OUTPUT].value, 
+                    medial_axis_file=maf, 
                     logger=self.logger,
                 )
                 # Display the medial axis on the map since it was saved
@@ -838,7 +839,10 @@ class OceanMeshUGridTool(Tool):
 
             else:
                 self.logger.info("Loading in medial axis...")
-
+                maf = arguments[ARG_MEDIAL_AXIS_INPUT].value
+                # if maf doesn't have .shp at the end add it
+                if not maf.endswith(".shp"):
+                    maf = maf + ".shp"
                 # load in the medial axis file from a location specified by the user
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
@@ -848,7 +852,7 @@ class OceanMeshUGridTool(Tool):
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
                     save_medial_axis=False,
-                    medial_axis_points=arguments[ARG_MEDIAL_AXIS_INPUT].value, 
+                    medial_axis_points=maf, 
                     logger=self.logger,
                 )
                 # file is being loaded so it must exist, lets display it
