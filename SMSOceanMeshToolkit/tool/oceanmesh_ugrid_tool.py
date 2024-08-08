@@ -183,9 +183,16 @@ class OceanMeshUGridTool(Tool):
             arguments[ARG_MEDIAL_AXIS_DIALOG].hide = False
             # if the user wants to load in a medial axis file
             if arguments[ARG_MEDIAL_AXIS_DIALOG].value == "Use existing medial axis":
+
                 arguments[ARG_MEDIAL_AXIS_INPUT].hide = False
+
+                arguments[ARG_MEDIAL_AXIS_OUTPUT].value = "None"
+
             elif arguments[ARG_MEDIAL_AXIS_DIALOG].value == "Compute & output medial axis":
+                # if the user wants tto compute and save off the medial axis
                 arguments[ARG_MEDIAL_AXIS_OUTPUT].hide = False
+                # set what's in ARG_MEDIAL_AXIS_INPUT to None
+                arguments[ARG_MEDIAL_AXIS_INPUT].value = "None"
             
         # Toggle for the second sizing function
         if arguments[ARG_SIZING_FUNCTION_2].value:
@@ -324,10 +331,11 @@ class OceanMeshUGridTool(Tool):
                 choices=["Use existing medial axis", "Compute & output medial axis"],
             ),
             # if the user wants to load in a medial axis file
-            self.string_argument(
+            self.file_argument(
                 name="Load medial axis file",
                 description="Load medial axis file",
-                value='None',
+                value="",
+                io_direction=IoDirection.INPUT,
                 optional=True,
             ),
             # if the user wants to save off the medial axis
@@ -388,7 +396,7 @@ class OceanMeshUGridTool(Tool):
             ),
             self.bool_argument(
                 name="Modify mesh cleaning options (advanced)",
-                description="Modify the mesh cleaning options (advanced)...",
+                description="Modify the mesh cleaning options (advanced)",
                 value=False,
                 optional=True,
             ),
@@ -816,13 +824,10 @@ class OceanMeshUGridTool(Tool):
 
             self.logger.info("Using feature size mesh sizing function")
 
-            if arguments[ARG_MEDIAL_AXIS_OUTPUT].value != 'None':
+            if arguments[ARG_MEDIAL_AXIS_OUTPUT].value != "None":
                 # compute the medial axis and save it off
                 self.logger.info("Building medial axis...")
                 maf = arguments[ARG_MEDIAL_AXIS_OUTPUT].value
-                # if maf doesn't have .shp at the end add it 
-                if not maf.endswith(".shp"):
-                    maf = maf + ".shp"
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
                     coastal_geometry,
@@ -840,9 +845,6 @@ class OceanMeshUGridTool(Tool):
             else:
                 self.logger.info("Loading in medial axis...")
                 maf = arguments[ARG_MEDIAL_AXIS_INPUT].value
-                # if maf doesn't have .shp at the end add it
-                if not maf.endswith(".shp"):
-                    maf = maf + ".shp"
                 # load in the medial axis file from a location specified by the user
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
