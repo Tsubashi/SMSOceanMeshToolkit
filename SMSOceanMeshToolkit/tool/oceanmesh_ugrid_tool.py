@@ -277,15 +277,15 @@ class OceanMeshUGridTool(Tool):
             ),
             # max element size by depth toggle
             self.bool_argument(
-                name="Maximum mesh size by depth",
-                description="Bound maximum mesh size by depth range",
+                name="Maximum mesh size by elevation",
+                description="Bound maximum mesh size by elevation range",
                 value=False,
                 optional=True,
             ),
             # max element size by depth bounds
             self.string_argument(
-                name="Maximum mesh size by depth bounds",
-                description="Maximum mesh size by depth bounds (SIZE_BOUND,ELEV_MIN,ELEV_MAX)",
+                name="Maximum mesh size by elevation bounds",
+                description="Maximum mesh size by elevation bounds (SIZE_BOUND,ELEV_MIN,ELEV_MAX)",
                 value="",
                 optional=True,
             ),
