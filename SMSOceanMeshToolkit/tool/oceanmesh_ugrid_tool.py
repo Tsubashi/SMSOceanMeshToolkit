@@ -304,7 +304,7 @@ class OceanMeshUGridTool(Tool):
                 choices=["Distance", "Feature-size"],
             ),
             # number of elements per shorline width
-            self.float_argument(
+            self.integer_argument(
                 name="Number of elements per estimated shoreline width",
                 description="Number of elements per estimated shoreline width",
                 value=3,
@@ -323,8 +323,8 @@ class OceanMeshUGridTool(Tool):
             ),
             # dialog drop down for medial axis 
             self.string_argument(
-                name="Medial axis dialog",
-                description="Medial axis dialog",
+                name="Medial axis option",
+                description="Medial axis option",
                 value="Compute & output medial axis",
                 choices=["Use existing medial axis", "Compute & output medial axis"],
             ),
@@ -351,7 +351,7 @@ class OceanMeshUGridTool(Tool):
                 optional=True,
             ),
             # wave length to grid scale
-            self.float_argument(
+            self.integer_argument(
                 name="Number of elements per wavelength",
                 description="Number of elements per wavelength",
                 value=300,
@@ -656,7 +656,7 @@ class OceanMeshUGridTool(Tool):
                 )
                 return
 
-        elif arguments[ARG_TYPE_OF_INPUT].value == "Map coverage":
+        elif arguments[ARG_TYPE_OF_INPUT].value == "Shoreline coverage":
             COVERAGE_FROM_SHAPEFILE = False
             try:
                 input_coverage = self.get_input_coverage(
@@ -825,7 +825,7 @@ class OceanMeshUGridTool(Tool):
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
                     coastal_geometry,
-                    number_of_elements_per_width=number_of_elements_per_shoreline,
+                    number_of_elements_per_width=float(number_of_elements_per_shoreline),
                     max_edge_length=max_mesh_size,
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
@@ -843,7 +843,7 @@ class OceanMeshUGridTool(Tool):
                 szfx_1 = smsom.feature_sizing_function(
                     grid,
                     coastal_geometry,
-                    number_of_elements_per_width=number_of_elements_per_shoreline,
+                    number_of_elements_per_width=float(number_of_elements_per_shoreline),
                     max_edge_length=max_mesh_size,
                     max_element_size_nearshore=max_size_nearshore,
                     nearshore_tolerance=nearshore_tolerance,
