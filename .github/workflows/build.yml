@@ -3,11 +3,6 @@ name: Build and Package Wheel for Windows
 on:
   push:
     branches:
-      - main
-      - tool-development
-  pull_request:
-    branches:
-      - main
       - tool-development
 
 jobs:
@@ -34,7 +29,7 @@ jobs:
 
     - name: Build the wheel
       run: |
-        python setup.py sdist bdist_wheel
+        python -m build
 
     - name: Upload the wheel as an artifact
       uses: actions/upload-artifact@v3
