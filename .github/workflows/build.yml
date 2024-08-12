@@ -25,6 +25,7 @@ jobs:
 
     - name: Install other dependencies
       run: |
+        pip install build
         pip install setuptools wheel
 
     - name: Build the wheel
