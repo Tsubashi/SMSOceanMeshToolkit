@@ -43,5 +43,5 @@ SMSOceanMeshToolkit = "SMSOceanMeshToolkit"
 include = ["SMSOceanMeshToolkit*"]
 
 [tool.setuptools]
-package-data = {"SMSOceanMeshToolkit" = ["libs/*.so"]}
+package-data = {"SMSOceanMeshToolkit" = ["libs/*.so", "tool/Tools.xml"]}
 
