@@ -28,7 +28,7 @@ dependencies = [
         "rioxarray",
         "scikit-learn",
         "scikit-image",
-        "scikit-fmm",
+        "scikit-fmm==2023.4.2",
         "inpoly @ git+https://github.com/dengwirda/inpoly-python.git@v0.1.2",
         "tqdm",
 ]
@@ -43,5 +43,5 @@ SMSOceanMeshToolkit = "SMSOceanMeshToolkit"
 include = ["SMSOceanMeshToolkit*"]
 
 [tool.setuptools]
-package-data = {"SMSOceanMeshToolkit" = ["libs/*.so", "tool/Tools.xml", "dlls/*.dll"]}
+package-data = {"SMSOceanMeshToolkit" = ["libs/*.pyd", "libs/*.so", "tool/Tools.xml", "dlls/*.dll"]}
 
