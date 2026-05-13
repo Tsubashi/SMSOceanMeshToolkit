@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "SMSOceanMeshToolkit"
+name = "AQ_SMSOceanMesh"
 description = "Tools for oceanmesh to interface with SMS"
 authors=[{name="Keith Roberts", email="kroberts@baird.com"}]
 readme = "README.md"
