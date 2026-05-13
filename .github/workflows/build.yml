@@ -25,7 +25,7 @@ jobs:
 
       - name: Build the wheel
         run: |
-          python -m build
+          python -m build --wheel
 
       - name: Upload the wheel as an artifact
         uses: actions/upload-artifact@v4
@@ -50,4 +50,4 @@ jobs:
           path: dist
 
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.9.0
+        uses: pypa/gh-action-pypi-publish@release/v1
