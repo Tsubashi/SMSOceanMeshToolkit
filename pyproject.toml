@@ -13,7 +13,6 @@ classifiers = [
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
-        'XMS DMI Definition :: XML :: SMSOceanMeshToolkit/tool/Tools.xml'
 ]
 dependencies = [
         "numpy",
@@ -36,12 +35,11 @@ dependencies = [
 [project.urls]
 repository = "https://github.com/krober10nd/SMSOceanMeshToolkit"
 
-[project.entry-points."xms.dmi.interfaces"]
+[project.entry-points."xms.dmi.aqmeta"]
 SMSOceanMeshToolkit = "SMSOceanMeshToolkit"
 
 [tool.setuptools.packages.find]
 include = ["SMSOceanMeshToolkit*"]
 
 [tool.setuptools]
-package-data = {"SMSOceanMeshToolkit" = ["libs/*.pyd", "libs/*.so", "tool/Tools.xml", "dlls/*.dll"]}
-
+package-data = {"SMSOceanMeshToolkit" = ["libs/*.pyd", "libs/*.so", "aqmeta.toml", "*.xml", "dlls/*.dll"]}

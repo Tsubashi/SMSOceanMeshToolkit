@@ -1,0 +1,6 @@
+[DMI]
+definitions = [
+  "SMSOceanMeshToolkit.xml"
+  ]
+migrations = [
+  ]
